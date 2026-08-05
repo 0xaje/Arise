@@ -1,16 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { RouteId, ExceptionCase, WorkflowItem, AgentRun, ApprovalRequest, ConnectionSystem, LiveActivityEvent } from './types/arise';
+import type { RouteId, ExceptionCase, WorkflowItem, AgentRun, ApprovalRequest, ConnectionSystem, LiveActivityEvent, AuditLog, EvidenceItem } from './types/arise';
 import { ariseApi } from './services/api';
-import { 
-  INITIAL_EXCEPTIONS, 
-  INITIAL_WORKFLOWS, 
-  INITIAL_RUNS, 
-  INITIAL_APPROVALS, 
-  INITIAL_CONNECTIONS, 
-  INITIAL_AUDIT_LOGS, 
-  INITIAL_EVIDENCE, 
-  INITIAL_LIVE_EVENTS 
-} from './data/mockData';
 
 import { AppShell } from './components/layout/AppShell';
 import { CreateWorkflowModal, RunWorkflowModal, ConnectionDialog, CaseDetailModal } from './components/common/Modals';
@@ -30,51 +20,60 @@ import { SettingsPage } from './pages/SettingsPage';
 export function App() {
   const [currentRoute, setCurrentRoute] = useState<RouteId>('/');
 
-  // Global State
-  const [exceptions, setExceptions] = useState<ExceptionCase[]>(INITIAL_EXCEPTIONS);
-  const [workflows, setWorkflows] = useState<WorkflowItem[]>(INITIAL_WORKFLOWS);
-  const [runs, setRuns] = useState<AgentRun[]>(INITIAL_RUNS);
-  const [approvals, setApprovals] = useState<ApprovalRequest[]>(INITIAL_APPROVALS);
-  const [connections, setConnections] = useState<ConnectionSystem[]>(INITIAL_CONNECTIONS);
-  const [auditLogs] = useState(INITIAL_AUDIT_LOGS);
-  const [evidence] = useState(INITIAL_EVIDENCE);
-  const [liveEvents, setLiveEvents] = useState<LiveActivityEvent[]>(INITIAL_LIVE_EVENTS);
+  // Real Database State (Starts 100% empty, loaded exclusively from Backend API)
+  const [exceptions, setExceptions] = useState<ExceptionCase[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
+  const [runs, setRuns] = useState<AgentRun[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
+  const [connections, setConnections] = useState<ConnectionSystem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
+  const [liveEvents, setLiveEvents] = useState<LiveActivityEvent[]>([]);
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Check Real Backend API Health & Load Live Data
+  const fetchLiveData = async () => {
+    setLoading(true);
+    try {
+      const health = await ariseApi.checkHealth();
+      if (health.status === 'ok') {
+        setIsBackendConnected(true);
+        const [exc, wf, rn, app, conn, aud, evd, evts] = await Promise.all([
+          ariseApi.getExceptions(),
+          ariseApi.getWorkflows(),
+          ariseApi.getRuns(),
+          ariseApi.getApprovals(),
+          ariseApi.getConnections(),
+          ariseApi.getAuditLogs(),
+          ariseApi.getEvidence(),
+          ariseApi.getLiveEvents(),
+        ]);
+        setExceptions(exc || []);
+        setWorkflows(wf || []);
+        setRuns(rn || []);
+        setApprovals(app || []);
+        setConnections(conn || []);
+        setAuditLogs(aud || []);
+        setEvidence(evd || []);
+        setLiveEvents(evts || []);
+      }
+    } catch (e) {
+      setIsBackendConnected(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveData();
+  }, []);
 
   // Modals
   const [isCreateWfOpen, setIsCreateWfOpen] = useState(false);
   const [isRunWfOpen, setIsRunWfOpen] = useState(false);
   const [isConnDialogOpen, setIsConnDialogOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<ExceptionCase | null>(null);
-
-  // Check Backend Connection Health on Mount & Load Data
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const health = await ariseApi.checkHealth();
-        if (health.status === 'ok') {
-          setIsBackendConnected(true);
-          const [exc, wf, rn, app, conn, evts] = await Promise.all([
-            ariseApi.getExceptions(),
-            ariseApi.getWorkflows(),
-            ariseApi.getRuns(),
-            ariseApi.getApprovals(),
-            ariseApi.getConnections(),
-            ariseApi.getLiveEvents(),
-          ]);
-          setExceptions(exc);
-          setWorkflows(wf);
-          setRuns(rn);
-          setApprovals(app);
-          setConnections(conn);
-          setLiveEvents(evts);
-        }
-      } catch (e) {
-        setIsBackendConnected(false);
-      }
-    }
-    loadData();
-  }, []);
 
   // Event handlers
   const handleNavigate = (route: RouteId) => {
@@ -84,63 +83,22 @@ export function App() {
 
   const handleCreateWorkflow = (created: WorkflowItem) => {
     setWorkflows(prev => [created, ...prev]);
-    setLiveEvents(prev => [{
-      id: `evt-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'success',
-      message: `Workflow '${created.name}' created and activated.`,
-      source: 'Workflow Studio'
-    }, ...prev]);
+    fetchLiveData();
   };
 
   const handleTriggerRun = (workflowId: string) => {
-    const wf = workflows.find(w => w.id === workflowId);
-    const newRun: AgentRun = {
-      id: `run-${Date.now()}`,
-      runId: `RUN-${Math.floor(10000 + Math.random() * 90000)}`,
-      workflowName: wf?.name || 'Manual Workflow Execution',
-      status: 'Completed',
-      startedAt: new Date().toLocaleString(),
-      durationMs: 1250,
-      targetCase: 'EXC-8092',
-      stepsCount: 5,
-      logSummary: 'Coasty agent completed execution loop in 1.25s. All checks passed.'
-    };
-    setRuns(prev => [newRun, ...prev]);
-    setLiveEvents(prev => [{
-      id: `evt-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'success',
-      message: `Executed run ${newRun.runId} for ${newRun.workflowName}.`,
-      source: 'Coasty Runner'
-    }, ...prev]);
+    fetchLiveData();
   };
 
   const handleResolveCase = (caseId: string) => {
-    setExceptions(prev => prev.map(c => c.id === caseId ? { ...c, status: 'Resolved' } : c));
-    setLiveEvents(prev => [{
-      id: `evt-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'success',
-      message: `Case ${caseId} resolved autonomously. Evidence attached to ledger.`,
-      source: 'ARISE Engine'
-    }, ...prev]);
+    fetchLiveData();
   };
 
   const handleApprovalAction = async (approvalId: string, action: 'Approved' | 'Rejected') => {
     try {
       await ariseApi.submitApprovalDecision(approvalId, action);
-    } catch (e) {
-      // safe fallback
-    }
-    setApprovals(prev => prev.map(a => a.id === approvalId ? { ...a, status: action } : a));
-    setLiveEvents(prev => [{
-      id: `evt-${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString(),
-      type: action === 'Approved' ? 'success' : 'warning',
-      message: `Escalation ${approvalId} ${action.toLowerCase()} by Human Operator.`,
-      source: 'Approval Queue'
-    }, ...prev]);
+    } catch (e) {}
+    fetchLiveData();
   };
 
   const handleToggleConnection = async (connId: string) => {
@@ -148,16 +106,8 @@ export function App() {
     const nextStatus = target?.status === 'Connected' ? 'Disconnected' : 'Connected';
     try {
       await ariseApi.updateConnection(connId, { status: nextStatus });
-    } catch (e) {
-      // safe fallback
-    }
-    setConnections(prev => prev.map(c => {
-      if (c.id === connId) {
-        return { ...c, status: nextStatus };
-      }
-      return c;
-    }));
-    setIsBackendConnected(true);
+    } catch (e) {}
+    fetchLiveData();
   };
 
   const toggleWorkflowStatus = async (id: string) => {
@@ -165,10 +115,8 @@ export function App() {
     const nextStatus = target?.status === 'Active' ? 'Paused' : 'Active';
     try {
       await ariseApi.updateWorkflowStatus(id, nextStatus);
-    } catch (e) {
-      // safe fallback
-    }
-    setWorkflows(prev => prev.map(w => w.id === id ? { ...w, status: nextStatus } : w));
+    } catch (e) {}
+    fetchLiveData();
   };
 
   return (
