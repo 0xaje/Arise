@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { RouteId } from '../../types/arise';
 import { 
   LayoutDashboard, 
-  AlertCircle, 
+  AlertTriangle, 
   Workflow, 
   PlayCircle, 
   CheckSquare, 
@@ -17,7 +17,12 @@ import {
   X, 
   ChevronRight, 
   ExternalLink,
-  Zap
+  Zap,
+  Search,
+  Bell,
+  Sparkles,
+  Shield,
+  Activity
 } from 'lucide-react';
 
 interface AppShellProps {
@@ -40,72 +45,76 @@ export const AppShell: React.FC<AppShellProps> = ({
   children
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
 
   const navGroups = [
     {
-      title: 'Revenue operations',
+      title: 'Revenue Operations',
       items: [
-        { id: '/' as RouteId, label: 'Command center', icon: LayoutDashboard }
+        { id: '/' as RouteId, label: 'Command Center', icon: LayoutDashboard }
       ]
     },
     {
-      title: 'Operations',
+      title: 'Operations Loop',
       items: [
-        { id: '/exceptions' as RouteId, label: 'Exception Queue', icon: AlertCircle, badge: '5' },
+        { id: '/exceptions' as RouteId, label: 'Exception Queue', icon: AlertTriangle, badge: '5', badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
         { id: '/workflows' as RouteId, label: 'Workflows', icon: Workflow },
-        { id: '/runs' as RouteId, label: 'Runs', icon: PlayCircle },
-        { id: '/approvals' as RouteId, label: 'Approvals', icon: CheckSquare, badge: '2' }
+        { id: '/runs' as RouteId, label: 'Execution Runs', icon: PlayCircle },
+        { id: '/approvals' as RouteId, label: 'Human Approvals', icon: CheckSquare, badge: '2', badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-500/30' }
       ]
     },
     {
-      title: 'Intelligence',
+      title: 'Revenue Intelligence',
       items: [
-        { id: '/reports' as RouteId, label: 'Reports', icon: BarChart3 },
+        { id: '/reports' as RouteId, label: 'Intelligence Reports', icon: BarChart3 },
         { id: '/audit' as RouteId, label: 'Audit Trail', icon: ShieldCheck },
-        { id: '/evidence' as RouteId, label: 'Evidence', icon: FileCheck }
+        { id: '/evidence' as RouteId, label: 'Evidence Store', icon: FileCheck }
       ]
     },
     {
-      title: 'Infrastructure',
+      title: 'Infrastructure & Control',
       items: [
         { id: '/connections' as RouteId, label: 'Connections', icon: Network },
-        { id: '/coasty' as RouteId, label: 'Coasty', icon: Bot },
+        { id: '/coasty' as RouteId, label: 'Coasty Agent', icon: Bot },
         { id: '/settings' as RouteId, label: 'Settings', icon: Settings }
       ]
     }
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#09090b] text-zinc-100 antialiased select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#070709] text-zinc-100 antialiased select-none bg-ambient-glow">
       
-      {/* Mobile Drawer Backdrop */}
+      {/* Mobile Backdrop */}
       {mobileMenuOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden" 
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md lg:hidden" 
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar Navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-zinc-800/80 bg-[#0c0c0e] transition-transform duration-200 ease-in-out lg:static lg:translate-x-0
+        fixed inset-y-0 left-0 z-50 flex w-68 flex-col border-r border-zinc-800/60 bg-[#0b0b0e]/95 backdrop-blur-xl transition-transform duration-300 cubic-bezier(0.16, 1, 0.3, 1) lg:static lg:translate-x-0
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between border-b border-zinc-800/80 px-5">
+        <div className="flex h-16 items-center justify-between border-b border-zinc-800/60 px-5">
           <div 
             className="flex items-center gap-3 cursor-pointer group"
             onClick={() => { onNavigate('/'); setMobileMenuOpen(false); }}
           >
-            <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+            <div className="relative flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-purple-500 shadow-lg shadow-indigo-500/25 group-hover:scale-105 transition-transform duration-300">
               <Zap className="size-5 text-white" />
+              <div className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#0b0b0e] animate-pulse" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-lg tracking-wider text-white">ARISE</span>
-                <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-blue-400 border border-blue-500/20">v2.4</span>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-lg tracking-wider text-white font-mono">ARISE</span>
+                <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-bold text-indigo-400 border border-indigo-500/30">
+                  PRO v2.4
+                </span>
               </div>
-              <p className="text-[11px] font-medium text-zinc-400">Autonomous Revenue Engine</p>
+              <p className="text-[11px] font-medium text-zinc-400">Revenue Settlement Engine</p>
             </div>
           </div>
 
@@ -117,25 +126,30 @@ export const AppShell: React.FC<AppShellProps> = ({
           </button>
         </div>
 
-        {/* Workspace Pill */}
-        <div className="px-4 py-3 border-b border-zinc-800/40 bg-zinc-900/40">
-          <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-xs">
+        {/* Workspace Pill Card */}
+        <div className="px-4 py-3.5 border-b border-zinc-800/40 bg-zinc-900/30">
+          <div className="flex items-center justify-between rounded-lg border border-zinc-800/80 bg-[#121217] px-3 py-2 text-xs shadow-inner">
             <div className="flex items-center gap-2 truncate">
-              <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-medium text-zinc-200 truncate">Production Workspace</span>
+              <div className="flex size-6 items-center justify-center rounded bg-emerald-500/20 text-emerald-400">
+                <Shield className="size-3.5" />
+              </div>
+              <div className="truncate">
+                <div className="font-semibold text-zinc-200 truncate text-[11px]">Production Workspace</div>
+                <div className="text-[9px] text-zinc-400 font-mono">AR Ops • Tier 1</div>
+              </div>
             </div>
-            <span className="text-[10px] text-zinc-400 uppercase font-mono">AR Ops</span>
+            <Sparkles className="size-3.5 text-indigo-400 shrink-0" />
           </div>
         </div>
 
-        {/* Nav Link Groups */}
-        <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        {/* Navigation Items */}
+        <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
           {navGroups.map((group, idx) => (
-            <div key={idx} className="space-y-1">
-              <h2 className="px-2 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+            <div key={idx} className="space-y-1.5">
+              <h2 className="px-2.5 text-[10px] font-bold tracking-widest text-zinc-400 uppercase font-mono">
                 {group.title}
               </h2>
-              <div className="mt-1 space-y-0.5">
+              <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = currentRoute === item.id;
                   const Icon = item.icon;
@@ -147,21 +161,18 @@ export const AppShell: React.FC<AppShellProps> = ({
                         setMobileMenuOpen(false);
                       }}
                       className={`
-                        w-full flex items-center justify-between rounded-md px-2.5 py-2 text-sm font-medium transition-colors text-left
+                        w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 text-left relative group
                         ${isActive 
-                          ? 'bg-blue-600/15 text-blue-400 border border-blue-500/20 shadow-sm' 
-                          : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'}
+                          ? 'bg-gradient-to-r from-indigo-600/20 to-blue-600/10 text-indigo-300 border border-indigo-500/30 shadow-md shadow-indigo-500/10' 
+                          : 'text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-200'}
                       `}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`size-4 ${isActive ? 'text-blue-400' : 'text-zinc-400'}`} />
+                      <div className="flex items-center gap-3">
+                        <Icon className={`size-4 transition-colors ${isActive ? 'text-indigo-400 scale-110' : 'text-zinc-400 group-hover:text-zinc-200'}`} />
                         <span>{item.label}</span>
                       </div>
                       {item.badge && (
-                        <span className={`
-                          rounded-full px-2 py-0.5 text-[10px] font-semibold
-                          ${isActive ? 'bg-blue-500 text-white' : 'bg-zinc-800 text-zinc-300'}
-                        `}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-mono font-bold ${item.badgeColor}`}>
                           {item.badge}
                         </span>
                       )}
@@ -173,27 +184,27 @@ export const AppShell: React.FC<AppShellProps> = ({
           ))}
         </nav>
 
-        {/* Coasty Agent Footer Widget */}
-        <div className="p-3 border-t border-zinc-800/80 bg-zinc-900/60">
+        {/* Coasty Agent Footer */}
+        <div className="p-3.5 border-t border-zinc-800/60 bg-[#0d0d11]">
           <div 
             onClick={() => { onNavigate('/coasty'); setMobileMenuOpen(false); }}
-            className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/90 p-2.5 cursor-pointer hover:border-zinc-700 transition-colors"
+            className="group flex items-center justify-between rounded-xl border border-zinc-800/90 bg-[#121217] p-3 cursor-pointer hover:border-indigo-500/50 hover:bg-[#16161d] transition-all"
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="flex size-8 items-center justify-center rounded-md bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
-                  <Bot className="size-4.5" />
+                <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 group-hover:scale-105 transition-transform">
+                  <Bot className="size-5" />
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-zinc-900 ${isBackendConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[#121217] ${isBackendConnected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </div>
               <div className="text-left">
-                <div className="text-xs font-semibold text-zinc-200">Coasty Agent</div>
-                <div className="text-[10px] text-zinc-400">
-                  {isBackendConnected ? 'Active • Session #88' : 'Offline • Ready to connect'}
+                <div className="text-xs font-bold text-zinc-100 group-hover:text-indigo-300 transition-colors">Coasty Web Agent</div>
+                <div className="text-[10px] text-zinc-400 font-mono">
+                  {isBackendConnected ? 'Session #88 • Active' : 'Simulation Mode'}
                 </div>
               </div>
             </div>
-            <ChevronRight className="size-4 text-zinc-500" />
+            <ChevronRight className="size-4 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </aside>
@@ -201,57 +212,76 @@ export const AppShell: React.FC<AppShellProps> = ({
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-zinc-800/80 bg-[#09090b]/90 px-4 md:px-6 backdrop-blur">
-          <div className="flex items-center gap-3">
+        {/* Top Header Navigation */}
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-zinc-800/60 bg-[#070709]/90 px-4 md:px-6 backdrop-blur-xl">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="grid size-9 place-items-center rounded-md border border-zinc-800 text-zinc-400 hover:text-white lg:hidden"
+              className="grid size-9 place-items-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white lg:hidden"
             >
               <Menu className="size-5" />
             </button>
 
-            <div>
-              <h1 className="text-base font-semibold text-white tracking-tight flex items-center gap-2">
-                Finance Operations Command Center
-              </h1>
-              <p className="text-xs text-zinc-400 hidden sm:block">
-                Autonomous Revenue Intelligence & Settlement Engine
-              </p>
+            {/* Global Quick Search Bar */}
+            <div className="relative hidden md:block w-72">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Quick search cases, runs, workflows..."
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                className="w-full rounded-lg border border-zinc-800/90 bg-zinc-900/60 pl-9 pr-4 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-indigo-500 focus:outline-none transition-colors"
+              />
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
+            {/* Environment Tag */}
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400">
+              <div className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-mono">LIVE CLUSTER</span>
+            </div>
+
+            {/* Notifications Bell */}
+            <button 
+              onClick={() => onNavigate('/approvals')}
+              className="relative grid size-9 place-items-center rounded-lg border border-zinc-800/90 bg-zinc-900/50 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
+            >
+              <Bell className="size-4" />
+              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-purple-500" />
+            </button>
+
+            {/* Action Triggers */}
             <button
               onClick={onOpenCreateWorkflow}
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/80 px-3.5 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white transition-colors"
             >
               <Plus className="size-3.5 text-zinc-400" />
-              <span>Create Workflow</span>
+              <span className="hidden sm:inline">Create Workflow</span>
             </button>
 
             <button
               onClick={onOpenRunWorkflow}
-              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-1.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/25 hover:from-blue-500 hover:to-indigo-500 transition-all"
             >
               <PlayCircle className="size-3.5" />
-              <span>Run Workflow</span>
+              <span>Run Engine</span>
             </button>
           </div>
         </header>
 
-        {/* Backend Connection Alert Banner */}
+        {/* Backend Connection Status Banner */}
         {!isBackendConnected && (
-          <div className="flex items-center justify-between border-b border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200/90">
+          <div className="flex items-center justify-between border-b border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-transparent px-4 md:px-6 py-2.5 text-xs text-amber-200/90">
             <div className="flex items-center gap-2">
-              <AlertCircle className="size-4 shrink-0 text-amber-400" />
+              <AlertTriangle className="size-4 shrink-0 text-amber-400" />
               <span>
-                <strong className="font-semibold text-amber-300">Backend not connected:</strong> ARISE live execution engine endpoint is running in simulation mode.
+                <strong className="font-semibold text-amber-300">Backend Status:</strong> ARISE execution engine is running in standalone local environment.
               </span>
             </div>
             <button
               onClick={onOpenReviewConnections}
-              className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium underline underline-offset-2 shrink-0 ml-2"
+              className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2 shrink-0 ml-2"
             >
               <span>Configure Connections</span>
               <ExternalLink className="size-3" />
@@ -259,8 +289,8 @@ export const AppShell: React.FC<AppShellProps> = ({
           </div>
         )}
 
-        {/* Dynamic Page View */}
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#09090b]">
+        {/* Main Workspace */}
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
