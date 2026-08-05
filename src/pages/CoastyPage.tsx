@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
-import { Bot, Terminal, Monitor, RefreshCw, Send } from 'lucide-react';
+import { Bot, Terminal, Monitor, RefreshCw, Send, AlertCircle } from 'lucide-react';
 import { ariseApi } from '../services/api';
 
 export const CoastyPage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
-  const [agentLogs, setAgentLogs] = useState<string[]>([
-    '[22:10:04] Coasty Agent v3.1 initialized on node #us-east-1a',
-    '[22:15:10] Session #88 attached to Chrome Headless DOM instance',
-    '[22:15:30] Intersecting bank wire payload with NetSuite invoice tables...'
-  ]);
+  const [agentLogs, setAgentLogs] = useState<string[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSendPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +14,7 @@ export const CoastyPage: React.FC = () => {
 
     const userText = prompt;
     setPrompt('');
+    setError(null);
     setAgentLogs(prev => [...prev, `[USER_PROMPT] ${userText}`, '[EXECUTING] Dispatching request to Coasty web agent runner...']);
     setIsExecuting(true);
 
@@ -27,12 +25,10 @@ export const CoastyPage: React.FC = () => {
       } else {
         setAgentLogs(prev => [...prev, `[RESPONSE] ${res.response || 'Agent command processed.'}`]);
       }
-    } catch (err) {
-      setAgentLogs(prev => [
-        ...prev, 
-        `[ACTION] Evaluated DOM for prompt: "${userText}"`,
-        '[SUCCESS] Command executed on browser instance. Evidence hash recorded.'
-      ]);
+    } catch (err: any) {
+      const msg = err?.message || 'API connection failed';
+      setError(msg);
+      setAgentLogs(prev => [...prev, `[ERROR] Action failed: ${msg}`]);
     } finally {
       setIsExecuting(false);
     }
@@ -50,36 +46,34 @@ export const CoastyPage: React.FC = () => {
             Real-time control panel for the Coasty browser agent web navigation runner.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400 font-semibold">
-          <div className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Agent Worker #1 Ready</span>
-        </div>
       </div>
 
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left: Viewport Simulator */}
+        {/* Left: Viewport Sandbox */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-800 bg-[#111114] p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
             <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
               <Monitor className="size-4 text-purple-400" />
-              <span>Coasty Web Vision Sandbox (1440 x 900)</span>
+              <span>Coasty Web Vision Sandbox</span>
             </div>
-            <span className="text-[10px] text-zinc-500 font-mono">Chromium v124 Headless</span>
+            <span className="text-[10px] text-zinc-500 font-mono">Chromium Headless</span>
           </div>
 
           <div className="aspect-video w-full rounded-lg border border-zinc-800 bg-black flex flex-col items-center justify-center relative overflow-hidden group">
-            <div className="absolute top-3 left-3 bg-zinc-900/90 border border-zinc-800 rounded px-2.5 py-1 text-[10px] font-mono text-zinc-300">
-              URL: https://netsuite.internal/app/ar/unapplied-cash.nl
-            </div>
-
             <div className="text-center p-6 space-y-3">
               <div className="inline-flex size-14 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 shadow-lg shadow-purple-500/10">
                 <Bot className="size-8" />
               </div>
               <h3 className="text-sm font-bold text-white">Coasty Web Navigation Engine</h3>
               <p className="text-xs text-zinc-400 max-w-sm">
-                The agent is evaluating DOM elements and cross-referencing ledger tables in real-time.
+                Enter an instruction below to execute real web navigation actions on target systems.
               </p>
             </div>
           </div>
@@ -88,7 +82,7 @@ export const CoastyPage: React.FC = () => {
           <form onSubmit={handleSendPrompt} className="flex gap-2">
             <input
               type="text"
-              placeholder="Instruct Coasty (e.g. 'Match remaining unapplied payment $14,850 with open invoice')..."
+              placeholder="Instruct Coasty (e.g. 'Match unapplied payment with open ERP invoice')..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
@@ -111,13 +105,16 @@ export const CoastyPage: React.FC = () => {
               <Terminal className="size-4 text-purple-400" />
               Agent Console Logs
             </h3>
-            <span className="text-[10px] text-zinc-500 font-mono">Stream Active</span>
           </div>
 
-          <div className="flex-1 rounded-lg border border-zinc-800 bg-black p-3.5 font-mono text-[11px] text-purple-300 space-y-2 max-h-80 overflow-y-auto">
-            {agentLogs.map((log, idx) => (
-              <div key={idx} className="leading-relaxed">{log}</div>
-            ))}
+          <div className="flex-1 rounded-lg border border-zinc-800 bg-black p-3.5 font-mono text-[11px] text-purple-300 space-y-2 max-h-80 overflow-y-auto min-h-[200px]">
+            {agentLogs.length === 0 ? (
+              <div className="text-zinc-600 text-xs py-8 text-center font-sans">No console logs emitted yet.</div>
+            ) : (
+              agentLogs.map((log, idx) => (
+                <div key={idx} className="leading-relaxed">{log}</div>
+              ))
+            )}
           </div>
         </div>
       </div>

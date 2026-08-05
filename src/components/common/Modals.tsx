@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ExceptionCase, WorkflowItem, ConnectionSystem } from '../../types/arise';
 import { ariseApi } from '../../services/api';
-import { X, Play, CheckCircle2, Database, Bot, Zap, RefreshCw } from 'lucide-react';
+import { X, Play, CheckCircle2, Database, Bot, Zap, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface CreateWorkflowModalProps {
   isOpen: boolean;
@@ -37,22 +37,8 @@ export const CreateWorkflowModal: React.FC<CreateWorkflowModalProps> = ({ isOpen
       });
       onCreate(created);
       onClose();
-    } catch (err) {
-      // Clean fallback object if backend endpoint returns non-200 in standalone environment
-      const fallbackCreated: WorkflowItem = {
-        id: `wf-${Date.now()}`,
-        name,
-        category,
-        triggerEvent,
-        autoApprovalThreshold: parseFloat(threshold) || 10000,
-        description,
-        status: 'Active',
-        totalResolved: 0,
-        successRate: 100,
-        lastRun: 'Just now',
-      };
-      onCreate(fallbackCreated);
-      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to communicate with backend API server.');
     } finally {
       setLoading(false);
     }
@@ -74,8 +60,9 @@ export const CreateWorkflowModal: React.FC<CreateWorkflowModalProps> = ({ isOpen
         </div>
 
         {error && (
-          <div className="mt-3 rounded border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-400">
-            {error}
+          <div className="mt-3 flex items-center gap-2 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
@@ -174,27 +161,26 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({ isOpen, onCl
   const [selectedWf, setSelectedWf] = useState(workflows[0]?.id || '');
   const [isRunning, setIsRunning] = useState(false);
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleRun = async () => {
     setIsRunning(true);
-    setExecutionLogs(['Dispatching workflow execution request to ARISE Engine...']);
+    setError(null);
+    setExecutionLogs(['Dispatching workflow execution request to API endpoint...']);
 
     try {
       const runResult = await ariseApi.triggerWorkflowRun(selectedWf);
       setExecutionLogs([
-        `[${new Date().toLocaleTimeString()}] Executed Run ${runResult.runId}`,
+        `[${new Date().toLocaleTimeString()}] Run ${runResult.runId} completed.`,
         `Status: ${runResult.status}`,
         `Summary: ${runResult.logSummary}`
       ]);
       onTriggerRun(selectedWf);
-    } catch (err) {
-      setExecutionLogs([
-        `[${new Date().toLocaleTimeString()}] Workflow execution initiated.`,
-        'All automated validation steps completed successfully.'
-      ]);
-      onTriggerRun(selectedWf);
+    } catch (err: any) {
+      setError(err?.message || 'API Execution call failed');
+      setExecutionLogs(prev => [...prev, `[ERROR] Execution failed: ${err?.message || 'API connection error'}`]);
     } finally {
       setIsRunning(false);
     }
@@ -215,6 +201,13 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
+        {error && (
+          <div className="mt-3 flex items-center gap-2 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="mt-4 space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-300">Select Target Workflow</label>
@@ -223,22 +216,14 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({ isOpen, onCl
               onChange={(e) => setSelectedWf(e.target.value)}
               className="mt-1.5 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
             >
-              {workflows.map((wf) => (
-                <option key={wf.id} value={wf.id}>{wf.name} ({wf.category})</option>
-              ))}
+              {workflows.length === 0 ? (
+                <option value="">No active workflows configured</option>
+              ) : (
+                workflows.map((wf) => (
+                  <option key={wf.id} value={wf.id}>{wf.name} ({wf.category})</option>
+                ))
+              )}
             </select>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 space-y-2">
-            <div className="text-xs font-medium text-zinc-400">Execution Config:</div>
-            <div className="flex items-center justify-between text-xs text-zinc-300">
-              <span>Environment:</span>
-              <span className="font-mono text-emerald-400">Production (AR Operations)</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-zinc-300">
-              <span>Mode:</span>
-              <span className="font-mono text-blue-400">Real-time Resolution Engine</span>
-            </div>
           </div>
 
           {executionLogs.length > 0 && (
@@ -258,7 +243,7 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({ isOpen, onCl
             </button>
             <button
               onClick={handleRun}
-              disabled={isRunning}
+              disabled={isRunning || workflows.length === 0}
               className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20 disabled:opacity-50"
             >
               {isRunning ? <RefreshCw className="size-3.5 animate-spin" /> : <Play className="size-3.5 fill-current" />}
@@ -297,40 +282,42 @@ export const ConnectionDialog: React.FC<ConnectionDialogProps> = ({ isOpen, onCl
         </div>
 
         <div className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-          {connections.map((conn) => (
-            <div key={conn.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300">
-                  {conn.name.includes('Stripe') ? <Zap className="size-5 text-amber-400" /> :
-                   conn.name.includes('NetSuite') ? <Database className="size-5 text-blue-400" /> :
-                   conn.name.includes('Coasty') ? <Bot className="size-5 text-purple-400" /> : <Bot className="size-5 text-emerald-400" />}
+          {connections.length === 0 ? (
+            <div className="p-8 text-center text-xs text-zinc-400">No connection systems configured.</div>
+          ) : (
+            connections.map((conn) => (
+              <div key={conn.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300">
+                    <Database className="size-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm text-zinc-200">{conn.name}</div>
+                    <div className="text-xs text-zinc-500 font-mono">{conn.endpointUrl}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium text-sm text-zinc-200">{conn.name}</div>
-                  <div className="text-xs text-zinc-500 font-mono">{conn.endpointUrl}</div>
+
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    conn.status === 'Connected' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}>
+                    {conn.status}
+                  </span>
+
+                  <button
+                    onClick={() => onToggleConnect(conn.id)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      conn.status === 'Connected' 
+                        ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
+                        : 'bg-blue-600 text-white hover:bg-blue-500'
+                    }`}
+                  >
+                    {conn.status === 'Connected' ? 'Disconnect' : 'Connect'}
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  conn.status === 'Connected' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                }`}>
-                  {conn.status}
-                </span>
-
-                <button
-                  onClick={() => onToggleConnect(conn.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                    conn.status === 'Connected' 
-                      ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700' 
-                      : 'bg-blue-600 text-white hover:bg-blue-500'
-                  }`}
-                >
-                  {conn.status === 'Connected' ? 'Disconnect' : 'Connect'}
-                </button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="mt-6 flex items-center justify-end pt-4 border-t border-zinc-800">
@@ -355,19 +342,21 @@ interface CaseDetailModalProps {
 
 export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ isOpen, onClose, exception, onResolve }) => {
   const [resolving, setResolving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !exception) return null;
 
   const handleExecute = async () => {
     setResolving(true);
+    setError(null);
     try {
       await ariseApi.resolveException(exception.id);
-    } catch (err) {
-      // handled cleanly
-    } finally {
-      setResolving(false);
       onResolve(exception.id);
       onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resolve case on API server.');
+    } finally {
+      setResolving(false);
     }
   };
 
@@ -386,6 +375,13 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({ isOpen, onClos
             <X className="size-5" />
           </button>
         </div>
+
+        {error && (
+          <div className="mt-3 flex items-center gap-2 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">

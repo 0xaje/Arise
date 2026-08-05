@@ -200,7 +200,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <div className="text-left">
                 <div className="text-xs font-bold text-zinc-100 group-hover:text-indigo-300 transition-colors">Coasty Web Agent</div>
                 <div className="text-[10px] text-zinc-400 font-mono">
-                  {isBackendConnected ? 'Session #88 • Active' : 'Simulation Mode'}
+                  {isBackendConnected ? 'Session Active' : 'Backend Disconnected'}
                 </div>
               </div>
             </div>

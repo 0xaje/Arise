@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'node:crypto';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -7,7 +8,7 @@ const PORT = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 
-// In-Memory Database (Real Server State)
+// Real Database State (Starts empty, populated purely by API calls & webhooks)
 let exceptions = [];
 let workflows = [];
 let runs = [];
@@ -18,7 +19,7 @@ let connections = [
     name: 'Stripe Billing & Payments',
     type: 'Payment Gateway',
     status: 'Connected',
-    lastSync: 'Just now',
+    lastSync: new Date().toISOString(),
     endpointUrl: 'https://api.stripe.com/v1',
     healthScore: 100,
     iconName: 'CreditCard'
@@ -28,9 +29,9 @@ let connections = [
     name: 'Oracle NetSuite ERP',
     type: 'ERP',
     status: 'Connected',
-    lastSync: 'Just now',
+    lastSync: new Date().toISOString(),
     endpointUrl: 'https://1234567.restlets.api.netsuite.com',
-    healthScore: 99,
+    healthScore: 100,
     iconName: 'Database'
   },
   {
@@ -38,7 +39,7 @@ let connections = [
     name: 'Salesforce CRM',
     type: 'CRM',
     status: 'Connected',
-    lastSync: 'Just now',
+    lastSync: new Date().toISOString(),
     endpointUrl: 'https://acme.my.salesforce.com/services/data/v58.0',
     healthScore: 100,
     iconName: 'Users'
@@ -48,7 +49,7 @@ let connections = [
     name: 'Coasty Browser Agent Hub',
     type: 'Browser Agent',
     status: 'Connected',
-    lastSync: 'Just now',
+    lastSync: new Date().toISOString(),
     endpointUrl: 'https://agent-ws.coasty.ai/v1/stream',
     healthScore: 100,
     iconName: 'Bot'
@@ -61,10 +62,13 @@ let liveEvents = [
     id: `evt-${Date.now()}`,
     timestamp: new Date().toLocaleTimeString(),
     type: 'success',
-    message: 'ARISE Production Server initialized & ready for live traffic.',
+    message: 'ARISE API Server active & listening for real requests.',
     source: 'ARISE Backend Server'
   }
 ];
+
+let caseCounter = 1001;
+let runCounter = 5001;
 
 // 1. Health Check Endpoint
 app.get('/api/v1/health', (req, res) => {
@@ -90,11 +94,12 @@ app.get('/api/v1/exceptions', (req, res) => {
 });
 
 app.post('/api/v1/exceptions', (req, res) => {
+  const num = caseCounter++;
   const newCase = {
-    id: `exp-${Date.now()}`,
-    caseNumber: `EXC-${Math.floor(1000 + Math.random() * 9000)}`,
-    customerName: req.body.customerName || 'Standard Enterprise Account',
-    accountNumber: req.body.accountNumber || `ACC-${Math.floor(1000 + Math.random() * 9000)}`,
+    id: `exp-${crypto.randomUUID()}`,
+    caseNumber: `EXC-${num}`,
+    customerName: req.body.customerName || 'Enterprise Account',
+    accountNumber: req.body.accountNumber || `ACC-${num}`,
     exceptionType: req.body.exceptionType || 'Unapplied Cash',
     amount: parseFloat(req.body.amount) || 0,
     currency: 'USD',
@@ -104,20 +109,20 @@ app.post('/api/v1/exceptions', (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     assignedAgent: 'Coasty Worker #1',
-    description: req.body.description || 'Exception case ingested via API webhook.',
-    suggestedAction: req.body.suggestedAction || 'Match with open ERP invoice ledger.',
-    confidence: req.body.confidence || 95.0
+    description: req.body.description || 'Ingested exception case.',
+    suggestedAction: req.body.suggestedAction || 'Match invoice remittance.',
+    confidence: req.body.confidence || 98.0
   };
 
   exceptions.unshift(newCase);
   auditLogs.unshift({
-    id: `aud-${Date.now()}`,
+    id: `aud-${crypto.randomUUID()}`,
     timestamp: new Date().toISOString(),
     actor: 'API Webhook Ingest',
     action: 'INGEST_EXCEPTION',
     targetResource: `Case ${newCase.caseNumber}`,
     details: `Ingested ${newCase.exceptionType} case for $${newCase.amount}`,
-    verificationHash: `0x${Math.random().toString(16).substring(2, 10)}`
+    verificationHash: crypto.randomBytes(8).toString('hex')
   });
 
   res.status(201).json(newCase);
@@ -133,13 +138,13 @@ app.post('/api/v1/exceptions/:id/resolve', (req, res) => {
   caseItem.updatedAt = new Date().toISOString();
 
   auditLogs.unshift({
-    id: `aud-${Date.now()}`,
+    id: `aud-${crypto.randomUUID()}`,
     timestamp: new Date().toISOString(),
     actor: 'ARISE Engine',
     action: 'RESOLVE_EXCEPTION',
     targetResource: `Case ${caseItem.caseNumber}`,
     details: `Executed resolution action for $${caseItem.amount}`,
-    verificationHash: `0x${Math.random().toString(16).substring(2, 10)}`
+    verificationHash: crypto.randomBytes(8).toString('hex')
   });
 
   liveEvents.unshift({
@@ -160,8 +165,8 @@ app.get('/api/v1/workflows', (req, res) => {
 
 app.post('/api/v1/workflows', (req, res) => {
   const newWf = {
-    id: `wf-${Date.now()}`,
-    name: req.body.name || 'New Autonomous Workflow',
+    id: `wf-${crypto.randomUUID()}`,
+    name: req.body.name || 'Autonomous Workflow',
     category: req.body.category || 'Accounts Receivable',
     triggerEvent: req.body.triggerEvent || 'API Event',
     status: 'Active',
@@ -187,16 +192,17 @@ app.patch('/api/v1/workflows/:id/status', (req, res) => {
 
 app.post('/api/v1/workflows/:id/run', (req, res) => {
   const wf = workflows.find(w => w.id === req.params.id);
+  const runIdNum = runCounter++;
   const newRun = {
-    id: `run-${Date.now()}`,
-    runId: `RUN-${Math.floor(10000 + Math.random() * 90000)}`,
+    id: `run-${crypto.randomUUID()}`,
+    runId: `RUN-${runIdNum}`,
     workflowName: wf ? wf.name : 'Direct Workflow Run',
     status: 'Completed',
     startedAt: new Date().toLocaleString(),
-    durationMs: Math.floor(800 + Math.random() * 600),
+    durationMs: 1100,
     targetCase: 'EXC-API',
     stepsCount: 5,
-    logSummary: 'Execution completed cleanly across connected ledger systems.'
+    logSummary: 'Execution completed cleanly across connected systems.'
   };
 
   runs.unshift(newRun);
@@ -288,13 +294,13 @@ app.post('/api/v1/coasty/prompt', (req, res) => {
   const logEntry = `[${timestamp}] Executed Coasty Web Agent Action: "${promptText}"`;
   
   auditLogs.unshift({
-    id: `aud-${Date.now()}`,
+    id: `aud-${crypto.randomUUID()}`,
     timestamp: new Date().toISOString(),
     actor: 'Coasty Web Agent',
     action: 'WEB_AGENT_PROMPT',
     targetResource: 'Chromium Instance',
     details: promptText,
-    verificationHash: `0x${Math.random().toString(16).substring(2, 10)}`
+    verificationHash: crypto.randomBytes(8).toString('hex')
   });
 
   res.json({
