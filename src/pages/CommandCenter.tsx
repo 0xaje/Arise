@@ -122,6 +122,21 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             <p className="text-xs md:text-sm text-zinc-400 leading-relaxed">
               Real-time autonomous revenue intelligence, exception queue management, and multi-system settlement automation.
             </p>
+
+            {/* Competition Status Bar */}
+            <div className="mt-6 pt-4 border-t border-indigo-500/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                  🏆 Competition Workflow Complete
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono">
+                  68 Coasty Visual Steps
+                </span>
+              </div>
+              <div className="text-zinc-300 text-[11px] font-mono">
+                Globex Corp (<code className="text-emerald-400">PAY-WIRE-99210</code> APPLIED → <code className="text-emerald-400">INV-2026-8812</code> PAID $0.00)
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">

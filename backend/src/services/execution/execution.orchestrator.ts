@@ -155,6 +155,55 @@ export class ExecutionOrchestrator {
 
     return report;
   }
+
+  // Reverse a cash application run safely
+  public async reverseRun(runId: string, actor: string = 'operator@arise-finance.org', reason: string = 'Cash application reversal requested') {
+    const run = await prisma.agentRun.findFirst({
+      where: { OR: [{ id: runId }, { runId: runId }] },
+      include: { exceptionCase: true }
+    });
+
+    if (!run) {
+      throw new AppError('RUN_NOT_FOUND', `AgentRun '${runId}' not found`, 404);
+    }
+
+    const updatedRun = await prisma.agentRun.update({
+      where: { id: run.id },
+      data: {
+        status: RunStatus.FAILED,
+        businessOutcome: 'ESCALATED',
+        verificationStatus: 'UNAVAILABLE',
+        outcome: `Application reversed by ${actor}. Reason: ${reason}`,
+      }
+    });
+
+    if (run.exceptionCaseId) {
+      await prisma.exceptionCase.update({
+        where: { id: run.exceptionCaseId },
+        data: { status: CaseStatus.PENDING }
+      });
+    }
+
+    await AuditService.createLog({
+      actorType: 'HUMAN_OPERATOR',
+      actorId: actor,
+      action: 'REVERSE_CASH_APPLICATION',
+      resourceType: 'AgentRun',
+      resourceId: run.id,
+      detailsJson: { runId: run.runId, reason, reversedAt: new Date() }
+    });
+
+    await EventService.emit({
+      runId: run.id,
+      type: 'RUN_FAILED',
+      message: `Cash application reversed by ${actor}: ${reason}`,
+      payloadJson: { reason, reversedBy: actor },
+      actorType: 'HUMAN_OPERATOR',
+      actorId: actor,
+    });
+
+    return updatedRun;
+  }
 }
 
 export const orchestrator = new ExecutionOrchestrator();

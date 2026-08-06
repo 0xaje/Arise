@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { orchestrator } from '../../services/execution/execution.orchestrator.js';
 import { competitionService } from '../../services/execution/competition.service.js';
+import { auditExporter } from '../../services/audit/auditExporter.js';
 
 export async function runRoutes(fastify: FastifyInstance) {
   // GET /api/v1/runs
@@ -39,6 +40,34 @@ export async function runRoutes(fastify: FastifyInstance) {
     }
 
     return run;
+  });
+
+  // GET /api/v1/runs/:id/export
+  fastify.get('/runs/:id/export', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const run = await prisma.agentRun.findFirst({ where: { OR: [{ id }, { runId: id }] } });
+
+    if (!run) {
+      throw new AppError('RUN_NOT_FOUND', `AgentRun '${id}' not found`, 404);
+    }
+
+    const auditBundle = await auditExporter.generateAuditPackage(run.id);
+    reply.header('Content-Type', 'application/json');
+    reply.header('Content-Disposition', `attachment; filename="arise-audit-bundle-${run.runId}.json"`);
+    return auditBundle;
+  });
+
+  // POST /api/v1/runs/:id/reverse
+  fastify.post('/runs/:id/reverse', async (request) => {
+    const { id } = request.params as { id: string };
+    const body = (request.body as { actor?: string; reason?: string }) || {};
+    const run = await prisma.agentRun.findFirst({ where: { OR: [{ id }, { runId: id }] } });
+
+    if (!run) {
+      throw new AppError('RUN_NOT_FOUND', `AgentRun '${id}' not found`, 404);
+    }
+
+    return orchestrator.reverseRun(run.id, body.actor, body.reason);
   });
 
   // GET /api/v1/runs/:id/compliance

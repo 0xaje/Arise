@@ -18,9 +18,7 @@ import { coastyWebhookRoutes } from './modules/webhooks/coastyWebhook.routes.js'
 export function buildApp() {
   const app = fastify({
     loggerInstance: logger,
-    disableRequestLogging: false,
     requestIdHeader: 'x-request-id',
-    requestIdLogLabel: 'requestId',
   });
 
   // CORS
