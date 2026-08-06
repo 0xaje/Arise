@@ -1,0 +1,289 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum ExceptionType {
+  UNAPPLIED_CASH
+  DISCREPANCY
+  CHARGEBACK
+  OVERPAYMENT
+  TAX_VARIANCE
+  PAYMENT_NOT_LOCATED
+  INVOICE_DISPUTE
+  BILLING_DISCREPANCY
+  DUPLICATE_INVOICE
+  INVOICE_DELIVERY
+  PAYMENT_PROMISE
+  NO_RESPONSE
+}
+
+enum CaseStatus {
+  PENDING
+  INVESTIGATING
+  AWAITING_APPROVAL
+  RESOLVED
+  ESCALATED
+  FAILED
+}
+
+enum RiskScore {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RunStatus {
+  QUEUED
+  STARTING
+  RUNNING
+  WAITING
+  APPROVAL_REQUIRED
+  RECOVERING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ActionType {
+  OBSERVE
+  NAVIGATE
+  CLICK
+  TYPE
+  SEARCH
+  READ
+  REASON_SUMMARY
+  BRANCH
+  VERIFY
+  SUBMIT
+  UPDATE
+  APPROVAL
+  RECOVERY
+  COMPLETE
+  FAIL
+}
+
+enum EvidenceType {
+  SCREENSHOT
+  DOCUMENT
+  API_RESPONSE
+  RECEIPT
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum ConnectionType {
+  COASTY
+  ACCOUNTING
+  CRM
+  EMAIL
+  PAYMENT
+  BROWSER
+}
+
+enum EventType {
+  RUN_CREATED
+  RUN_STARTED
+  STEP_STARTED
+  STEP_COMPLETED
+  EVIDENCE_CAPTURED
+  APPROVAL_REQUIRED
+  APPROVAL_RESOLVED
+  RUN_RECOVERING
+  RUN_COMPLETED
+  RUN_FAILED
+}
+
+model Workflow {
+  id                    String         @id @default(uuid())
+  name                  String
+  description           String?
+  category              String
+  triggerEvent          String
+  status                WorkflowStatus @default(DRAFT)
+  autoApprovalThreshold Float
+  maxSteps              Int            @default(20)
+  timeoutSeconds        Int            @default(300)
+  retryLimit            Int            @default(3)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  exceptionCases ExceptionCase[]
+  agentRuns      AgentRun[]
+
+  @@map("workflows")
+}
+
+model ExceptionCase {
+  id                 String        @id @default(uuid())
+  caseNumber         String        @unique
+  customerName       String
+  accountNumber      String
+  exceptionType      ExceptionType
+  amount             Float
+  currency           String        @default("USD")
+  status             CaseStatus    @default(PENDING)
+  riskScore          RiskScore     @default(MEDIUM)
+  sourceSystem       String
+  description        String
+  suggestedAction    String
+  confidence         Float
+  assignedWorkflowId String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  assignedWorkflow Workflow?         @relation(fields: [assignedWorkflowId], references: [id])
+  agentRuns        AgentRun[]
+  approvalRequests ApprovalRequest[]
+
+  @@map("exception_cases")
+}
+
+model AgentRun {
+  id              String    @id @default(uuid())
+  runId           String    @unique
+  workflowId      String
+  exceptionCaseId String?
+  status          RunStatus @default(QUEUED)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  durationMs      Int?
+  currentStep     Int       @default(0)
+  totalSteps      Int       @default(0)
+  outcome         String?
+  errorCode       String?
+  errorMessage    String?
+  idempotencyKey  String?   @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  workflow         Workflow          @relation(fields: [workflowId], references: [id])
+  exceptionCase    ExceptionCase?    @relation(fields: [exceptionCaseId], references: [id])
+  agentSteps       AgentStep[]
+  evidenceItems    EvidenceItem[]
+  approvalRequests ApprovalRequest[]
+  liveEvents       LiveEvent[]
+
+  @@map("agent_runs")
+}
+
+model AgentStep {
+  id          String     @id @default(uuid())
+  runId       String
+  sequence    Int
+  action      String
+  actionType  ActionType
+  application String
+  status      String
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+  result      String?
+  error       String?
+  evidenceId  String?
+  createdAt   DateTime   @default(now())
+
+  run           AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  evidenceItems EvidenceItem[]
+
+  @@map("agent_steps")
+}
+
+model EvidenceItem {
+  id           String       @id @default(uuid())
+  runId        String
+  stepId       String?
+  type         EvidenceType
+  storageUrl   String
+  capturedAt   DateTime     @default(now())
+  sha256       String
+  mimeType     String
+  sizeBytes    Int
+  metadataJson String?
+  createdAt    DateTime     @default(now())
+
+  run  AgentRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  step AgentStep? @relation(fields: [stepId], references: [id])
+
+  @@map("evidence_items")
+}
+
+model ApprovalRequest {
+  id              String         @id @default(uuid())
+  runId           String
+  exceptionCaseId String?
+  approvalId      String         @unique
+  reason          String
+  proposedAction  String
+  requiredRole    String
+  status          ApprovalStatus @default(PENDING)
+  requestedAt     DateTime       @default(now())
+  decidedAt       DateTime?
+  decidedBy       String?
+  decisionComment String?
+
+  run           AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  exceptionCase ExceptionCase? @relation(fields: [exceptionCaseId], references: [id])
+
+  @@map("approval_requests")
+}
+
+model ConnectionSystem {
+  id             String         @id @default(uuid())
+  name           String
+  type           ConnectionType
+  status         String
+  endpointUrl    String
+  lastVerifiedAt DateTime?
+  metadataJson   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("connection_systems")
+}
+
+model AuditLog {
+  id               String   @id @default(uuid())
+  timestamp        DateTime @default(now())
+  actorType        String
+  actorId          String
+  action           String
+  resourceType     String
+  resourceId       String
+  detailsJson      String?
+  previousHash     String?
+  verificationHash String
+
+  @@map("audit_logs")
+}
+
+model LiveEvent {
+  id          String    @id @default(uuid())
+  runId       String?
+  type        EventType
+  message     String
+  payloadJson String?
+  timestamp   DateTime  @default(now())
+
+  run AgentRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("live_events")
+}

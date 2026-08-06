@@ -1,11 +1,17 @@
 # Dependencies
 node_modules
+**/node_modules
 .pnpm-store
 
 # Production build outputs
 dist
+**/dist
 dist-ssr
 build
+
+# Storage & Artifacts
+storage/
+**/storage/
 
 # Environment files and sensitive data
 .env
