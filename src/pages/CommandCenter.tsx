@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { RouteId, LiveActivityEvent, ExceptionCase } from '../types/arise';
+import { CoastyViewport } from '../components/coasty/CoastyViewport';
+import { DemoLauncherModal } from '../components/modals/DemoLauncherModal';
 import { 
   Zap, 
   Activity, 
@@ -15,7 +17,9 @@ import {
   RefreshCw,
   Sparkles,
   Bot,
-  Layers
+  Layers,
+  FileText,
+  Play
 } from 'lucide-react';
 
 interface CommandCenterProps {
@@ -35,6 +39,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   liveEvents,
   exceptions
 }) => {
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   // Real dynamic calculations from API state
   const pendingExceptions = exceptions.filter(e => e.status !== 'Resolved');
   const resolvedExceptions = exceptions.filter(e => e.status === 'Resolved');
@@ -141,22 +146,41 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
+              onClick={() => setIsDemoModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-xl shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all hover:scale-105"
+            >
+              <Play className="size-4 fill-white" />
+              <span>Launch 68-Step Demo</span>
+            </button>
+
+            <button
+              onClick={() => {
+                window.open('/api/v1/runs/RUN-MSHD9JN5900EA8C2B23B/certificate', '_blank');
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-4 py-2.5 text-xs font-bold text-indigo-300 hover:bg-indigo-500/25 transition-all"
+            >
+              <FileText className="size-4" />
+              <span>Executive Certificate</span>
+            </button>
+
+            <button
               onClick={onOpenCreateWorkflow}
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/90 px-4 py-2.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white transition-all shadow-md"
             >
               <Zap className="size-4 text-indigo-400" />
               <span>Create Workflow</span>
             </button>
-            <button
-              onClick={onOpenRunWorkflow}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-xl shadow-indigo-600/30 hover:from-blue-500 hover:to-indigo-500 transition-all hover:scale-105"
-            >
-              <Bot className="size-4" />
-              <span>Trigger Engine</span>
-            </button>
           </div>
         </div>
       </div>
+
+      {/* Live Coasty Computer-Use Desktop Viewport */}
+      <CoastyViewport onLaunchDemo={() => setIsDemoModalOpen(true)} />
+
+      <DemoLauncherModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+      />
 
       {/* Dynamic KPI Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
