@@ -13,6 +13,7 @@ import { evidenceRoutes } from './modules/evidence/evidence.routes.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { reportRoutes } from './modules/reports/reports.routes.js';
 import { eventRoutes } from './modules/events/events.routes.js';
+import { coastyWebhookRoutes } from './modules/webhooks/coastyWebhook.routes.js';
 
 export function buildApp() {
   const app = fastify({
@@ -26,7 +27,7 @@ export function buildApp() {
   app.register(cors, {
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-request-id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-request-id', 'x-coasty-signature'],
   });
 
   // Global Error Handler
@@ -43,6 +44,7 @@ export function buildApp() {
   app.register(auditRoutes, { prefix: '/api/v1' });
   app.register(reportRoutes, { prefix: '/api/v1' });
   app.register(eventRoutes, { prefix: '/api/v1' });
+  app.register(coastyWebhookRoutes, { prefix: '/api/v1' });
 
   return app;
 }

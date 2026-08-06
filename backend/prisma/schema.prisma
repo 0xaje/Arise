@@ -160,6 +160,7 @@ model ExceptionCase {
 model AgentRun {
   id              String    @id @default(uuid())
   runId           String    @unique
+  externalRunId   String?   @unique
   workflowId      String
   exceptionCaseId String?
   status          RunStatus @default(QUEUED)
@@ -186,20 +187,21 @@ model AgentRun {
 }
 
 model AgentStep {
-  id          String     @id @default(uuid())
-  runId       String
-  sequence    Int
-  action      String
-  actionType  ActionType
-  application String
-  status      String
-  startedAt   DateTime   @default(now())
-  completedAt DateTime?
-  durationMs  Int?
-  result      String?
-  error       String?
-  evidenceId  String?
-  createdAt   DateTime   @default(now())
+  id             String     @id @default(uuid())
+  runId          String
+  externalStepId String?
+  sequence       Int
+  action         String
+  actionType     ActionType
+  application    String
+  status         String
+  startedAt      DateTime   @default(now())
+  completedAt    DateTime?
+  durationMs     Int?
+  result         String?
+  error          String?
+  evidenceId     String?
+  createdAt      DateTime   @default(now())
 
   run           AgentRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
   evidenceItems EvidenceItem[]
@@ -208,17 +210,18 @@ model AgentStep {
 }
 
 model EvidenceItem {
-  id           String       @id @default(uuid())
-  runId        String
-  stepId       String?
-  type         EvidenceType
-  storageUrl   String
-  capturedAt   DateTime     @default(now())
-  sha256       String
-  mimeType     String
-  sizeBytes    Int
-  metadataJson String?
-  createdAt    DateTime     @default(now())
+  id                 String       @id @default(uuid())
+  runId              String
+  stepId             String?
+  externalEvidenceId String?
+  type               EvidenceType
+  storageUrl         String
+  capturedAt         DateTime     @default(now())
+  sha256             String
+  mimeType           String
+  sizeBytes          Int
+  metadataJson       String?
+  createdAt          DateTime     @default(now())
 
   run  AgentRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
   step AgentStep? @relation(fields: [stepId], references: [id])
