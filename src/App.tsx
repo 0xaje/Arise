@@ -40,23 +40,23 @@ export function App() {
       if (health.status === 'ok') {
         setIsBackendConnected(true);
         const [exc, wf, rn, app, conn, aud, evd, evts] = await Promise.all([
-          ariseApi.getExceptions(),
-          ariseApi.getWorkflows(),
-          ariseApi.getRuns(),
-          ariseApi.getApprovals(),
-          ariseApi.getConnections(),
-          ariseApi.getAuditLogs(),
-          ariseApi.getEvidence(),
-          ariseApi.getLiveEvents(),
+          ariseApi.getExceptions().catch(() => []),
+          ariseApi.getWorkflows().catch(() => []),
+          ariseApi.getRuns().catch(() => []),
+          ariseApi.getApprovals().catch(() => []),
+          ariseApi.getConnections().catch(() => []),
+          ariseApi.getAuditLogs().catch(() => []),
+          ariseApi.getEvidence().catch(() => []),
+          ariseApi.getLiveEvents().catch(() => []),
         ]);
-        setExceptions(exc || []);
-        setWorkflows(wf || []);
-        setRuns(rn || []);
-        setApprovals(app || []);
-        setConnections(conn || []);
-        setAuditLogs(aud || []);
-        setEvidence(evd || []);
-        setLiveEvents(evts || []);
+        setExceptions(Array.isArray(exc) ? exc : []);
+        setWorkflows(Array.isArray(wf) ? wf : []);
+        setRuns(Array.isArray(rn) ? rn : []);
+        setApprovals(Array.isArray(app) ? app : []);
+        setConnections(Array.isArray(conn) ? conn : []);
+        setAuditLogs(Array.isArray(aud) ? aud : []);
+        setEvidence(Array.isArray(evd) ? evd : []);
+        setLiveEvents(Array.isArray(evts) ? evts : []);
       }
     } catch (e) {
       setIsBackendConnected(false);
@@ -82,15 +82,15 @@ export function App() {
   };
 
   const handleCreateWorkflow = (created: WorkflowItem) => {
-    setWorkflows(prev => [created, ...prev]);
+    setWorkflows(prev => Array.isArray(prev) ? [created, ...prev] : [created]);
     fetchLiveData();
   };
 
-  const handleTriggerRun = (workflowId: string) => {
+  const handleTriggerRun = () => {
     fetchLiveData();
   };
 
-  const handleResolveCase = (caseId: string) => {
+  const handleResolveCase = () => {
     fetchLiveData();
   };
 

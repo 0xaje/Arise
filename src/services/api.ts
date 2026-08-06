@@ -37,7 +37,10 @@ export const ariseApi = {
   // Exceptions API
   getExceptions: async (params?: { status?: string; search?: string }): Promise<ExceptionCase[]> => {
     const query = new URLSearchParams(params as Record<string, string>).toString();
-    return request<ExceptionCase[]>(`/exceptions${query ? `?${query}` : ''}`);
+    const res = await request<any>(`/exceptions${query ? `?${query}` : ''}`);
+    if (Array.isArray(res)) return res;
+    if (res && Array.isArray(res.items)) return res.items;
+    return [];
   },
 
   getExceptionById: async (id: string): Promise<ExceptionCase> => {
@@ -53,7 +56,8 @@ export const ariseApi = {
 
   // Workflows API
   getWorkflows: async (): Promise<WorkflowItem[]> => {
-    return request<WorkflowItem[]>('/workflows');
+    const res = await request<any>('/workflows');
+    return Array.isArray(res) ? res : [];
   },
 
   createWorkflow: async (workflowData: Partial<WorkflowItem>): Promise<WorkflowItem> => {
@@ -79,7 +83,8 @@ export const ariseApi = {
 
   // Runs API
   getRuns: async (): Promise<AgentRun[]> => {
-    return request<AgentRun[]>('/runs');
+    const res = await request<any>('/runs');
+    return Array.isArray(res) ? res : [];
   },
 
   getRunById: async (id: string): Promise<AgentRun> => {
@@ -88,7 +93,8 @@ export const ariseApi = {
 
   // Approvals API
   getApprovals: async (): Promise<ApprovalRequest[]> => {
-    return request<ApprovalRequest[]>('/approvals');
+    const res = await request<any>('/approvals');
+    return Array.isArray(res) ? res : [];
   },
 
   submitApprovalDecision: async (id: string, decision: 'Approved' | 'Rejected', comment?: string): Promise<ApprovalRequest> => {
@@ -100,48 +106,51 @@ export const ariseApi = {
 
   // Connections API
   getConnections: async (): Promise<ConnectionSystem[]> => {
-    return request<ConnectionSystem[]>('/connections');
+    const res = await request<any>('/connections');
+    return Array.isArray(res) ? res : [];
   },
 
-  updateConnection: async (id: string, data: Partial<ConnectionSystem>): Promise<ConnectionSystem> => {
+  updateConnection: async (id: string, connectionData: Partial<ConnectionSystem>): Promise<ConnectionSystem> => {
     return request<ConnectionSystem>(`/connections/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(connectionData),
     });
   },
 
-  testConnection: async (id: string): Promise<{ success: boolean; latencyMs: number; message: string }> => {
-    return request<{ success: boolean; latencyMs: number; message: string }>(`/connections/${id}/test`, {
+  testConnection: async (id: string): Promise<{ success: boolean; message: string }> => {
+    return request<{ success: boolean; message: string }>(`/connections/${id}/test`, {
       method: 'POST',
     });
   },
 
-  // Intelligence Reports API
-  getReportsSummary: async (): Promise<{
-    monthlyRecoveredValue: number;
-    mttrSeconds: number;
-    fteHoursSaved: number;
-    resolutionVelocity: Array<{ category: string; count: number; automationRate: number }>;
-  }> => {
-    return request('/reports/summary');
+  // Evidence API
+  getEvidence: async (): Promise<EvidenceItem[]> => {
+    const res = await request<any>('/evidence');
+    return Array.isArray(res) ? res : [];
+  },
+
+  getEvidenceById: async (id: string): Promise<EvidenceItem> => {
+    return request<EvidenceItem>(`/evidence/${id}`);
   },
 
   // Audit Logs API
   getAuditLogs: async (): Promise<AuditLog[]> => {
-    return request<AuditLog[]>('/audit');
+    const res = await request<any>('/audit');
+    return Array.isArray(res) ? res : [];
   },
 
-  // Evidence API
-  getEvidence: async (): Promise<EvidenceItem[]> => {
-    return request<EvidenceItem[]>('/evidence');
+  // Intelligence Reports API
+  getReportsSummary: async (): Promise<any> => {
+    return request<any>('/reports/summary');
   },
 
   // Live Activity Events API
   getLiveEvents: async (): Promise<LiveActivityEvent[]> => {
-    return request<LiveActivityEvent[]>('/events/live');
+    const res = await request<any>('/events/live');
+    return Array.isArray(res) ? res : [];
   },
 
-  // Coasty Browser Agent API
+  // Coasty Web Agent API
   sendCoastyPrompt: async (prompt: string): Promise<{ response: string; logs: string[]; success: boolean }> => {
     return request<{ response: string; logs: string[]; success: boolean }>('/coasty/prompt', {
       method: 'POST',
