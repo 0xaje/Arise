@@ -31,6 +31,80 @@ export function buildApp() {
   // Global Error Handler
   app.setErrorHandler(errorHandler);
 
+  // Root Welcome Route
+  app.get('/', async () => {
+    return {
+      name: 'ARISE — Autonomous Revenue Intelligence & Settlement Engine',
+      version: '1.0.0',
+      status: 'online',
+      health: '/api/v1/health',
+      documentation: 'https://github.com/0xaje/Arise',
+      endpoints: {
+        health: '/api/v1/health',
+        exceptions: '/api/v1/exceptions',
+        workflows: '/api/v1/workflows',
+        runs: '/api/v1/runs',
+        approvals: '/api/v1/approvals',
+        accountingPortal: '/app',
+      }
+    };
+  });
+
+  // Target Accounting Portal Root Route
+  app.get('/app', async (request, reply) => {
+    reply.header('Content-Type', 'text/html');
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enterprise Accounting & Ledger Management System</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; margin: 0; }
+    .card { max-width: 900px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 16px; p: 32px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    .badge { background: #0284c7; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 14px; }
+    .table th, .table td { border-bottom: 1px solid #334155; padding: 12px; text-align: left; }
+    .table th { background: #0f172a; color: #94a3b8; }
+    .status-applied { color: #4ade80; font-weight: bold; }
+    .status-unapplied { color: #fbbf24; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h1 style="font-size: 24px; margin: 0;">Enterprise Accounting & Ledger System</h1>
+      <span class="badge">Live Production Instance</span>
+    </div>
+
+    <h3 style="margin-top: 32px; font-size: 16px; color: #cbd5e1;">Target Case: Globex Corporation (EXC-HIGH-9901)</h3>
+    <table class="table">
+      <thead>
+        <tr><th>Transaction ID</th><th>Reference</th><th>Customer</th><th>Amount</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-family: monospace; font-weight: bold;">PAY-WIRE-99210</td>
+          <td>REM-WIRE-8812</td>
+          <td>Globex Corporation</td>
+          <td>$14,850.00 USD</td>
+          <td class="status-applied">APPLIED ($0.00 Unapplied)</td>
+        </tr>
+        <tr>
+          <td style="font-family: monospace; font-weight: bold;">INV-2026-8812</td>
+          <td>REM-WIRE-8812</td>
+          <td>Globex Corporation</td>
+          <td>$14,850.00 USD</td>
+          <td class="status-applied">PAID ($0.00 Outstanding)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+    `;
+  });
+
   // Register API Routes under /api/v1
   app.register(healthRoutes, { prefix: '/api/v1' });
   app.register(exceptionRoutes, { prefix: '/api/v1' });
