@@ -192,6 +192,10 @@ export class BusinessOutcomeVerifier {
       };
     }
 
+    // Competition Guard: Check if minimum 50 steps requirement is satisfied
+    const isCompetitionWorkflow = run.workflow?.category?.includes('Competition') || run.totalSteps >= 50;
+    const stepCountValid = !isCompetitionWorkflow || run.currentStep >= 50;
+
     // CRITICAL FIX: If no actual business state was independently observed:
     // Do NOT claim RESOLVED or VERIFIED merely because Coasty execution finished!
     if (!observedState) {
@@ -212,7 +216,10 @@ export class BusinessOutcomeVerifier {
         observedState: undefined,
         comparisonResult: 'UNAVAILABLE',
         evidence: run.evidenceItems.map(e => e.id),
-        unverifiedCriteria: ['Independent observation of business ledger state'],
+        unverifiedCriteria: [
+          'Independent observation of business ledger state',
+          ...(!stepCountValid ? [`Minimum competition requirement not satisfied. Actual Coasty steps: ${run.currentStep} (Required: 50)`] : [])
+        ],
         message: 'Coasty execution finished, but business outcome is UNAVAILABLE because actual business state has not been independently observed or verified.',
         verifiedAt: new Date(),
       };
@@ -262,9 +269,18 @@ export class BusinessOutcomeVerifier {
       {
         id: 'CRIT-4',
         description: 'Cryptographic SHA-256 evidence integrity validated',
-        required: hasEvidence, // Required only when evidence items are linked
+        required: hasEvidence,
         status: hasEvidence ? (verifiedEvidenceIds.length > 0 ? 'VERIFIED' : 'UNAVAILABLE') : 'VERIFIED',
         evidenceIds: verifiedEvidenceIds,
+      },
+      {
+        id: 'CRIT-5',
+        description: 'Minimum 50 Coasty computer-use steps executed',
+        required: isCompetitionWorkflow,
+        status: stepCountValid ? 'VERIFIED' : 'FAILED',
+        evidenceIds: [],
+        expected: 50,
+        observed: run.currentStep,
       }
     ];
 
