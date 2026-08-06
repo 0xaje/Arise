@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 import { prisma } from '../lib/prisma.js';
 import { coastyClient } from '../services/coasty/coasty.client.js';
 import { coastyExecutionProvider } from '../services/coasty/coasty.provider.js';
-import { WorkflowStatus, RunStatus } from '@prisma/client';
+import { orchestrator } from '../services/execution/execution.orchestrator.js';
+import { WorkflowStatus } from '@prisma/client';
 
 dotenv.config();
 
@@ -57,29 +58,20 @@ async function runSmokeTest() {
     });
   }
 
-  const runCount = await prisma.agentRun.count();
-  const runIdStr = `RUN-SMOKE-${Date.now()}`;
-
-  const ariseRun = await prisma.agentRun.create({
-    data: {
-      runId: runIdStr,
-      workflowId: workflow.id,
-      status: RunStatus.QUEUED,
-      totalSteps: 5,
-    }
+  const ariseRun = await orchestrator.createAndStartRun({
+    workflowId: workflow.id,
+    idempotencyKey: `arise:smoke:${Date.now()}`
   });
 
-  const idempotencyKey = `arise:${ariseRun.id}:coasty:smoke`;
+  if (!ariseRun) {
+    console.error('❌ Failed to orchestrate run creation.');
+    process.exit(1);
+  }
 
   console.log(`Created ARISE AgentRun: ${ariseRun.runId} (${ariseRun.id})`);
 
   // Step 5: Dispatch to Coasty API
   try {
-    await coastyExecutionProvider.startRun({
-      runId: ariseRun.id,
-      workflowId: workflow.id,
-    });
-
     const updatedRun = await prisma.agentRun.findUnique({ where: { id: ariseRun.id } });
     console.log(`✓ Coasty Task Run Created! Coasty Run ID: ${updatedRun?.externalRunId}`);
 
@@ -99,6 +91,8 @@ async function runSmokeTest() {
         console.log(`  [Attempt ${attempts}] Status: ${statusRes.status} | Steps: ${statusRes.currentStep}/${statusRes.totalSteps}`);
 
         if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(statusRes.status)) {
+          // Perform Strict Verification Audit
+          await orchestrator.verifyOutcome(ariseRun.id);
           finalRun = await prisma.agentRun.findUnique({ where: { id: ariseRun.id } });
           break;
         }
@@ -109,16 +103,20 @@ async function runSmokeTest() {
     console.log('\n====================================================');
     console.log('             LIVE SMOKE TEST RESULTS                ');
     console.log('====================================================');
-    console.log(`ARISE Run ID:   ${finalRun?.runId}`);
-    console.log(`Coasty Run ID:  ${finalRun?.externalRunId || 'N/A'}`);
-    console.log(`Final Status:   ${finalRun?.status}`);
-    console.log(`Steps Run:      ${finalRun?.currentStep} / ${finalRun?.totalSteps}`);
-    console.log(`Duration:       ${finalRun?.durationMs ? `${finalRun.durationMs} ms` : 'Completed'}`);
-    console.log(`Outcome/Error:  ${finalRun?.outcome || finalRun?.errorMessage || 'N/A'}`);
+    console.log(`ARISE Run ID:       ${finalRun?.runId}`);
+    console.log(`Coasty Run ID:      ${finalRun?.externalRunId || 'N/A'}`);
+    console.log(`Execution Status:   ${finalRun?.status}`);
+    console.log(`Business Outcome:   ${finalRun?.businessOutcome}`);
+    console.log(`Verification:       ${finalRun?.verificationStatus}`);
+    console.log(`Steps Run:          ${finalRun?.currentStep} / ${finalRun?.totalSteps}`);
+    console.log(`Duration:           ${finalRun?.durationMs ? `${finalRun.durationMs} ms` : 'Completed'}`);
     console.log('====================================================\n');
 
-    if (finalRun?.status === 'COMPLETED') {
-      console.log('✅ SMOKE TEST PASSED SUCCESSFULLY!');
+    if (finalRun?.status === 'COMPLETED' && finalRun?.businessOutcome === 'UNAVAILABLE') {
+      console.log('✅ SMOKE TEST PASSED HONESTLY! (Execution COMPLETED, Business Outcome UNAVAILABLE as expected).');
+      process.exit(0);
+    } else if (finalRun?.status === 'COMPLETED' && finalRun?.businessOutcome === 'RESOLVED') {
+      console.log('✅ SMOKE TEST RESOLVED & VERIFIED WITH OBSERVED STATE!');
       process.exit(0);
     } else {
       console.error(`❌ SMOKE TEST FAILED with status: ${finalRun?.status}`);

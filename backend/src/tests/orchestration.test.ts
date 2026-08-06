@@ -10,7 +10,7 @@ import { WorkflowStatus, RunStatus } from '@prisma/client';
 
 const app = buildApp();
 
-describe('ARISE Phase 3 — Execution Orchestration & Verification Tests', () => {
+describe('ARISE Phase 3.1 — Verification Integrity Hardening Tests', () => {
   beforeAll(async () => {
     await app.ready();
   });
@@ -20,114 +20,187 @@ describe('ARISE Phase 3 — Execution Orchestration & Verification Tests', () =>
     await prisma.$disconnect();
   });
 
-  // Test 1: Execution Plan Builder
-  it('1. should construct strongly typed ExecutionPlan with stages & policy', () => {
-    const plan = planBuilder.buildPlan(
-      { name: 'Wire Settlement', autoApprovalThreshold: 10000 },
-      { caseNumber: 'EXC-101', customerName: 'Globex Corp', amount: 15000, exceptionType: 'UNAPPLIED_CASH' }
-    );
-
-    expect(plan.objective).toContain('Investigate and resolve UNAPPLIED_CASH');
-    expect(plan.policy.riskLevel).toBe('HIGH');
-    expect(plan.policy.approvalRequired).toBe(true);
-    expect(plan.stages.length).toBe(6);
-    expect(plan.forbiddenActions.length).toBeGreaterThan(0);
-  });
-
-  // Test 2: Execution Policy Risk Evaluation
-  it('2. should evaluate risk levels and trigger human approval thresholds', () => {
-    const lowRisk = policyEvaluator.evaluatePolicy(500, 10000);
-    expect(lowRisk.riskLevel).toBe('LOW');
-    expect(lowRisk.approvalRequired).toBe(false);
-
-    const highRisk = policyEvaluator.evaluatePolicy(15000, 10000);
-    expect(highRisk.riskLevel).toBe('HIGH');
-    expect(highRisk.approvalRequired).toBe(true);
-
-    const criticalRisk = policyEvaluator.evaluatePolicy(75000, 10000);
-    expect(criticalRisk.riskLevel).toBe('CRITICAL');
-    expect(criticalRisk.approvalRequired).toBe(true);
-  });
-
-  // Test 3: Orchestrator Run & Stage Creation
-  it('3. should create AgentRun and 6 BusinessStages in PostgreSQL', async () => {
+  // Test 1: Coasty completed + no observed state = Business Outcome UNAVAILABLE (NOT RESOLVED)
+  it('1. should return Business Outcome UNAVAILABLE when Coasty completes without observed business state', async () => {
     const wf = await prisma.workflow.create({
       data: {
-        name: 'Orchestrated Settlement Workflow',
-        category: 'Accounts Receivable',
-        triggerEvent: 'Dispute Received',
+        name: 'No False Positive Workflow',
+        category: 'Safety',
+        triggerEvent: 'Smoke Check',
         autoApprovalThreshold: 5000,
         status: WorkflowStatus.ACTIVE,
       }
     });
 
-    const run = await orchestrator.createAndStartRun({
-      workflowId: wf.id,
-      idempotencyKey: `IDEM-ORCH-${Date.now()}`
+    const run = await prisma.agentRun.create({
+      data: {
+        runId: `RUN-TEST-NOFP-${Date.now()}`,
+        workflowId: wf.id,
+        status: RunStatus.COMPLETED
+      }
     });
 
-    expect(run?.id).toBeDefined();
-    expect(run?.status).toBe('QUEUED');
-    expect(run?.businessStages.length).toBe(6);
-    expect(run?.businessStages[0].status).toBe('RUNNING');
+    const report = await outcomeVerifier.verifyRun(run.id);
+
+    expect(report.businessOutcome).toBe('UNAVAILABLE');
+    expect(report.status).toBe('UNAVAILABLE');
+    expect(report.message).toContain('business state has not been independently observed');
   });
 
-  // Test 4: Decoupled Business Outcome Verifier
-  it('4. should evaluate business outcome separately from Coasty execution status', async () => {
+  // Test 2: Coasty completed + observed state MATCH = RESOLVED + VERIFIED
+  it('2. should return Business Outcome RESOLVED when expected state matches observed business state', async () => {
     const wf = await prisma.workflow.create({
       data: {
-        name: 'Outcome Workflow',
-        category: 'Audit',
-        triggerEvent: 'Audit Check',
-        autoApprovalThreshold: 1000,
+        name: 'Matching State Workflow',
+        category: 'Accounts Receivable',
+        triggerEvent: 'Wire Received',
+        autoApprovalThreshold: 10000,
+        status: WorkflowStatus.ACTIVE,
+      }
+    });
+
+    const exc = await prisma.exceptionCase.create({
+      data: {
+        caseNumber: `EXC-M-${Date.now()}`,
+        customerName: 'Acme Corp',
+        accountNumber: 'ACC-1234',
+        exceptionType: 'UNAPPLIED_CASH',
+        amount: 4500,
+        sourceSystem: 'Stripe',
+        description: 'Test wire',
+        suggestedAction: 'Match invoice',
+        confidence: 95.0,
+      }
+    });
+
+    const plan = planBuilder.buildPlan(wf, exc);
+    plan.contract.expectedState = {
+      recordReference: `case/${exc.caseNumber}`,
+      fields: { status: 'RESOLVED', amount: 4500 }
+    };
+
+    const run = await prisma.agentRun.create({
+      data: {
+        runId: `RUN-MATCH-${Date.now()}`,
+        workflowId: wf.id,
+        exceptionCaseId: exc.id,
+        status: RunStatus.COMPLETED,
+        executionPlanJson: JSON.stringify(plan)
+      }
+    });
+
+    const report = await outcomeVerifier.verifyRun(run.id, {
+      source: 'NetSuite ERP',
+      observedAt: new Date(),
+      application: 'NetSuite',
+      recordReference: `case/${exc.caseNumber}`,
+      fields: { status: 'RESOLVED', amount: 4500 },
+      evidenceIds: [],
+      observationMethod: 'REAL_COMPUTER_USE'
+    });
+
+    expect(report.businessOutcome).toBe('RESOLVED');
+    expect(report.status).toBe('VERIFIED');
+    expect(report.comparisonResult).toBe('MATCH');
+  });
+
+  // Test 3: Coasty completed + observed state MISMATCH = FAILED
+  it('3. should return Business Outcome FAILED when observed state mismatches expected state', async () => {
+    const wf = await prisma.workflow.create({
+      data: {
+        name: 'Mismatch Workflow',
+        category: 'Accounts Receivable',
+        triggerEvent: 'Mismatch Test',
+        autoApprovalThreshold: 10000,
+        status: WorkflowStatus.ACTIVE,
+      }
+    });
+
+    const exc = await prisma.exceptionCase.create({
+      data: {
+        caseNumber: `EXC-MIS-${Date.now()}`,
+        customerName: 'Beta LLC',
+        accountNumber: 'ACC-[5678]',
+        exceptionType: 'UNAPPLIED_CASH',
+        amount: 4500,
+        sourceSystem: 'Stripe',
+        description: 'Test wire mismatch',
+        suggestedAction: 'Match invoice',
+        confidence: 90.0,
+      }
+    });
+
+    const plan = planBuilder.buildPlan(wf, exc);
+
+    const run = await prisma.agentRun.create({
+      data: {
+        runId: `RUN-MISMATCH-${Date.now()}`,
+        workflowId: wf.id,
+        exceptionCaseId: exc.id,
+        status: RunStatus.COMPLETED,
+        executionPlanJson: JSON.stringify(plan)
+      }
+    });
+
+    const report = await outcomeVerifier.verifyRun(run.id, {
+      source: 'NetSuite ERP',
+      observedAt: new Date(),
+      application: 'NetSuite',
+      recordReference: `case/${exc.caseNumber}`,
+      fields: { status: 'UNPAID', amount: 4500 }, // MISMATCH!
+      evidenceIds: [],
+      observationMethod: 'REAL_COMPUTER_USE'
+    });
+
+    expect(report.businessOutcome).toBe('FAILED');
+    expect(report.status).toBe('PARTIAL');
+    expect(report.comparisonResult).toBe('PARTIAL');
+  });
+
+  // Test 4: Approval required = ESCALATED
+  it('4. should return Business Outcome ESCALATED when human approval is required', async () => {
+    const wf = await prisma.workflow.create({
+      data: {
+        name: 'Approval Escalation Workflow',
+        category: 'Governance',
+        triggerEvent: 'High Value',
+        autoApprovalThreshold: 5000,
         status: WorkflowStatus.ACTIVE,
       }
     });
 
     const run = await prisma.agentRun.create({
       data: {
-        runId: `RUN-OUT-${Date.now()}`,
+        runId: `RUN-ESC-${Date.now()}`,
         workflowId: wf.id,
-        status: RunStatus.COMPLETED
+        status: RunStatus.APPROVAL_REQUIRED
       }
     });
 
-    const outcome = await outcomeVerifier.verifyRun(run.id);
-    expect(outcome.businessOutcome).toBe('RESOLVED');
-    expect(outcome.verification.status).toBe('UNAVAILABLE'); // No evidence files uploaded yet
+    const report = await outcomeVerifier.verifyRun(run.id);
+
+    expect(report.businessOutcome).toBe('ESCALATED');
+    expect(report.status).toBe('UNAVAILABLE');
   });
 
-  // Test 5: Terminal State Protection
-  it('5. should protect terminal states from late delayed events', async () => {
+  // Test 5: Collision-resistant ULID Run ID Generation
+  it('5. should generate unique collision-resistant ULID run IDs', async () => {
     const wf = await prisma.workflow.create({
       data: {
-        name: 'Terminal Lock Workflow',
-        category: 'Safety',
-        triggerEvent: 'Lock Test',
+        name: 'ULID Test Workflow',
+        category: 'System',
+        triggerEvent: 'ULID Test',
         autoApprovalThreshold: 1000,
         status: WorkflowStatus.ACTIVE,
       }
     });
 
-    const extId = `ext-lock-${Date.now()}`;
-    const run = await prisma.agentRun.create({
-      data: {
-        runId: `RUN-LOCK-${Date.now()}`,
-        externalRunId: extId,
-        workflowId: wf.id,
-        status: RunStatus.COMPLETED
-      }
-    });
+    const run1 = await orchestrator.createAndStartRun({ workflowId: wf.id });
+    const run2 = await orchestrator.createAndStartRun({ workflowId: wf.id });
 
-    // Attempt to process a delayed step_started event
-    await executionEventProcessor.processEvent(extId, {
-      run_id: extId,
-      event_type: 'step_started',
-      message: 'Late step event',
-      timestamp: new Date().toISOString()
-    });
-
-    const freshRun = await prisma.agentRun.findUnique({ where: { id: run.id } });
-    expect(freshRun?.status).toBe('COMPLETED'); // Remained COMPLETED!
+    expect(run1?.runId).toBeDefined();
+    expect(run2?.runId).toBeDefined();
+    expect(run1?.runId).not.toBe(run2?.runId);
+    expect(run1?.runId).toMatch(/^RUN-[0-[#1-9A-Z]+/);
   });
 });

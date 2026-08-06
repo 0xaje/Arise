@@ -1,10 +1,12 @@
 import { prisma } from '../../lib/prisma.js';
+import { generateRunId } from '../../lib/idGenerator.js';
 import { planBuilder } from './execution.plan.js';
 import { coastyExecutionProvider } from '../coasty/coasty.provider.js';
 import { outcomeVerifier } from './execution.verifier.js';
 import { AuditService } from '../auditService.js';
 import { EventService } from '../eventService.js';
 import { AppError } from '../../lib/errors.js';
+import { ObservedBusinessState } from './execution.types.js';
 import { RunStatus, CaseStatus } from '@prisma/client';
 import { logger } from '../../lib/logger.js';
 
@@ -46,17 +48,17 @@ export class ExecutionOrchestrator {
     // 4. Generate Execution Plan
     const plan = planBuilder.buildPlan(workflow, exceptionCase);
 
-    const runCount = await prisma.agentRun.count();
-    const runIdStr = `RUN-${10000 + runCount + 1}`;
+    // 5. Generate Collision-Resistant ULID Run ID
+    const runIdStr = generateRunId();
 
-    // 5. Create AgentRun record in PostgreSQL
+    // 6. Create AgentRun record in PostgreSQL
     const createdRun = await prisma.agentRun.create({
       data: {
         runId: runIdStr,
         workflowId: workflow.id,
         exceptionCaseId: exceptionCase ? exceptionCase.id : null,
         status: RunStatus.QUEUED,
-        businessOutcome: 'PENDING',
+        businessOutcome: 'UNAVAILABLE',
         verificationStatus: 'UNAVAILABLE',
         executionPlanJson: JSON.stringify(plan),
         totalSteps: workflow.maxSteps || plan.policy.maxSteps,
@@ -64,7 +66,7 @@ export class ExecutionOrchestrator {
       }
     });
 
-    // 6. Create BusinessStages in PostgreSQL
+    // 7. Create BusinessStages in PostgreSQL
     for (const stageDef of plan.stages) {
       await prisma.businessStage.create({
         data: {
@@ -78,7 +80,7 @@ export class ExecutionOrchestrator {
       });
     }
 
-    // 7. Update ExceptionCase status
+    // 8. Update ExceptionCase status
     if (exceptionCase) {
       await prisma.exceptionCase.update({
         where: { id: exceptionCase.id },
@@ -86,17 +88,17 @@ export class ExecutionOrchestrator {
       });
     }
 
-    // 8. Log Audit event
+    // 9. Log Audit event
     await AuditService.createLog({
       actorType: 'ARISE_ORCHESTRATOR',
       actorId: 'system',
       action: 'ORCHESTRATE_RUN_CREATED',
       resourceType: 'AgentRun',
       resourceId: createdRun.id,
-      detailsJson: { planObjective: plan.objective, riskLevel: plan.policy.riskLevel }
+      detailsJson: { runId: createdRun.runId, planObjective: plan.objective, riskLevel: plan.policy.riskLevel }
     });
 
-    // 9. Dispatch asynchronously to Coasty provider (does not block HTTP response)
+    // 10. Dispatch asynchronously to Coasty provider (does not block HTTP response)
     coastyExecutionProvider.startRun({
       runId: createdRun.id,
       workflowId: workflow.id,
@@ -116,28 +118,42 @@ export class ExecutionOrchestrator {
     });
   }
 
-  // Verify business outcome of a run
-  public async verifyOutcome(runId: string) {
-    const result = await outcomeVerifier.verifyRun(runId);
+  // Verify business outcome of a run with observed business state
+  public async verifyOutcome(runId: string, observedState?: ObservedBusinessState) {
+    const report = await outcomeVerifier.verifyRun(runId, observedState);
+
+    await prisma.agentRun.update({
+      where: { id: runId },
+      data: {
+        businessOutcome: report.businessOutcome,
+        verificationStatus: report.status,
+      }
+    });
+
     await AuditService.createLog({
       actorType: 'BUSINESS_VERIFIER',
       actorId: 'system',
       action: 'VERIFY_BUSINESS_OUTCOME',
       resourceType: 'AgentRun',
       resourceId: runId,
-      detailsJson: { outcome: result.businessOutcome, verification: result.verification.status, message: result.verification.message }
+      detailsJson: { 
+        outcome: report.businessOutcome, 
+        verificationStatus: report.status, 
+        comparisonResult: report.comparisonResult,
+        message: report.message 
+      }
     });
 
     await EventService.emit({
       runId,
-      type: result.businessOutcome === 'RESOLVED' ? 'BUSINESS_OUTCOME_VERIFIED' : 'BUSINESS_OUTCOME_FAILED',
-      message: `Business Outcome Evaluated: ${result.businessOutcome}. Verification: ${result.verification.status}.`,
-      payloadJson: result.verification,
+      type: report.businessOutcome === 'RESOLVED' ? 'BUSINESS_OUTCOME_VERIFIED' : 'BUSINESS_OUTCOME_FAILED',
+      message: `Business Outcome Evaluated: ${report.businessOutcome}. Verification: ${report.status}. Result: ${report.comparisonResult}.`,
+      payloadJson: report,
       actorType: 'BUSINESS_VERIFIER',
       actorId: 'system',
     });
 
-    return result;
+    return report;
   }
 }
 

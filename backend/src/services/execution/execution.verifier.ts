@@ -2,12 +2,20 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { prisma } from '../../lib/prisma.js';
 import { storageService } from '../storageService.js';
-import { VerificationResult, VerificationStatus, BusinessOutcomeStatus } from './execution.types.js';
+import { 
+  VerificationReport, 
+  VerificationStatus, 
+  BusinessOutcomeStatus, 
+  ExpectedBusinessState, 
+  ObservedBusinessState, 
+  StateComparisonResult,
+  VerificationCriterion
+} from './execution.types.js';
 import { logger } from '../../lib/logger.js';
 
 export class BusinessOutcomeVerifier {
-  // SHA-256 Evidence Hash Verifier
-  public async verifyEvidence(evidenceId: string): Promise<{ status: 'VERIFIED' | 'MISMATCH' | 'UNAVAILABLE'; calculatedHash?: string }> {
+  // 1. Evidence File SHA-256 Hash Integrity Check (Does NOT prove business outcome)
+  public async verifyEvidenceIntegrity(evidenceId: string): Promise<{ status: 'VERIFIED' | 'MISMATCH' | 'UNAVAILABLE'; calculatedHash?: string }> {
     const item = await prisma.evidenceItem.findUnique({ where: { id: evidenceId } });
     if (!item) return { status: 'UNAVAILABLE' };
 
@@ -40,8 +48,45 @@ export class BusinessOutcomeVerifier {
     }
   }
 
-  // Business Outcome Verifier (Decoupled from Coasty execution status)
-  public async verifyRun(runId: string): Promise<{ businessOutcome: BusinessOutcomeStatus; verification: VerificationResult }> {
+  // 2. Deterministic State Comparison Layer (Code-level equality check)
+  public compareBusinessState(
+    expected?: ExpectedBusinessState, 
+    observed?: ObservedBusinessState
+  ): StateComparisonResult {
+    if (!expected || !observed) {
+      return 'UNAVAILABLE';
+    }
+
+    if (expected.recordReference !== observed.recordReference) {
+      return 'MISMATCH';
+    }
+
+    const expectedKeys = Object.keys(expected.fields);
+    if (expectedKeys.length === 0) {
+      return 'UNAVAILABLE';
+    }
+
+    let matchCount = 0;
+    for (const key of expectedKeys) {
+      if (observed.fields[key] === expected.fields[key]) {
+        matchCount++;
+      }
+    }
+
+    if (matchCount === expectedKeys.length) {
+      return 'MATCH';
+    } else if (matchCount > 0) {
+      return 'PARTIAL';
+    }
+
+    return 'MISMATCH';
+  }
+
+  // 3. Independent Business Outcome Verifier (Strict - Never assumes completion = resolved)
+  public async verifyRun(
+    runId: string, 
+    observedState?: ObservedBusinessState
+  ): Promise<VerificationReport> {
     const run = await prisma.agentRun.findUnique({
       where: { id: runId },
       include: {
@@ -55,111 +100,203 @@ export class BusinessOutcomeVerifier {
 
     if (!run) {
       return {
+        status: 'FAILED',
         businessOutcome: 'FAILED',
-        verification: {
-          status: 'FAILED',
-          verifiedAt: new Date(),
-          criteria: [],
-          evidenceIds: [],
-          actualState: {},
-          expectedState: {},
-          message: 'AgentRun not found',
-        }
+        criteria: [],
+        comparisonResult: 'UNAVAILABLE',
+        evidence: [],
+        unverifiedCriteria: ['AgentRun not found'],
+        message: 'AgentRun record not found',
+        verifiedAt: new Date(),
       };
     }
 
-    // Rule 1: If run required human approval and approval is PENDING or REJECTED
+    // Parse ExecutionPlan contract if present
+    let expectedState: ExpectedBusinessState | undefined = undefined;
+
+    if (run.executionPlanJson) {
+      try {
+        const parsedPlan = JSON.parse(run.executionPlanJson);
+        expectedState = parsedPlan.contract?.expectedState;
+      } catch (e) {}
+    }
+
+    // Check Human Governance Approvals
     const pendingApproval = run.approvalRequests.find(a => a.status === 'PENDING');
     const rejectedApproval = run.approvalRequests.find(a => a.status === 'REJECTED');
 
     if (pendingApproval || run.status === 'APPROVAL_REQUIRED') {
       return {
+        status: 'UNAVAILABLE',
         businessOutcome: 'ESCALATED',
-        verification: {
-          status: 'UNAVAILABLE',
-          verifiedAt: new Date(),
-          criteria: ['Awaiting human governance approval'],
-          evidenceIds: run.evidenceItems.map(e => e.id),
-          actualState: { runStatus: run.status },
-          expectedState: { approvalStatus: 'APPROVED' },
-          message: 'Run paused awaiting human sign-off; business outcome ESCALATED.',
-        }
+        criteria: [
+          {
+            id: 'CRIT-GOV',
+            description: 'Human governance authorization required',
+            required: true,
+            status: 'UNAVAILABLE',
+            evidenceIds: [],
+            reason: 'Run paused awaiting human sign-off'
+          }
+        ],
+        comparisonResult: 'UNAVAILABLE',
+        evidence: run.evidenceItems.map(e => e.id),
+        unverifiedCriteria: ['Human governance authorization required'],
+        message: 'Transaction exceeds automated risk limit; business outcome ESCALATED.',
+        verifiedAt: new Date(),
       };
     }
 
     if (rejectedApproval) {
       return {
+        status: 'FAILED',
         businessOutcome: 'ESCALATED',
-        verification: {
-          status: 'FAILED',
-          verifiedAt: new Date(),
-          criteria: ['Human operator rejected proposed resolution'],
-          evidenceIds: run.evidenceItems.map(e => e.id),
-          actualState: { approvalStatus: 'REJECTED' },
-          expectedState: { approvalStatus: 'APPROVED' },
-          message: 'Escalation action rejected by operator.',
-        }
+        criteria: [
+          {
+            id: 'CRIT-REJ',
+            description: 'Human operator rejected proposed resolution',
+            required: true,
+            status: 'FAILED',
+            evidenceIds: [],
+            reason: 'Operator rejected resolution'
+          }
+        ],
+        comparisonResult: 'MISMATCH',
+        evidence: run.evidenceItems.map(e => e.id),
+        unverifiedCriteria: ['Human operator authorization'],
+        message: 'Resolution rejected by human operator.',
+        verifiedAt: new Date(),
       };
     }
 
-    // Rule 2: If Coasty execution status is FAILED or CANCELLED
+    // Check Execution Status Failure
     if (run.status === 'FAILED' || run.status === 'CANCELLED') {
       return {
+        status: 'FAILED',
         businessOutcome: 'FAILED',
-        verification: {
-          status: 'FAILED',
-          verifiedAt: new Date(),
-          criteria: ['Execution runner completed cleanly'],
-          evidenceIds: run.evidenceItems.map(e => e.id),
-          actualState: { runStatus: run.status, error: run.errorMessage },
-          expectedState: { runStatus: 'COMPLETED' },
-          message: `Computer-use execution failed: ${run.errorMessage || 'Execution interrupted'}`,
-        }
-      };
-    }
-
-    // Rule 3: If Coasty execution COMPLETED
-    if (run.status === 'COMPLETED') {
-      // Check Evidence Integrity
-      let verifiedEvidenceCount = 0;
-      for (const ev of run.evidenceItems) {
-        const evResult = await this.verifyEvidence(ev.id);
-        if (evResult.status === 'VERIFIED') verifiedEvidenceCount++;
-      }
-
-      const hasEvidence = run.evidenceItems.length > 0;
-      const verificationStatus: VerificationStatus = hasEvidence ? 'VERIFIED' : 'UNAVAILABLE';
-
-      return {
-        businessOutcome: 'RESOLVED',
-        verification: {
-          status: verificationStatus,
-          verifiedAt: new Date(),
-          criteria: [
-            'Coasty computer-use task execution succeeded',
-            'Business ledger state visually verified',
-            'Audit hash chain validated',
-          ],
-          evidenceIds: run.evidenceItems.map(e => e.id),
-          actualState: { runStatus: run.status, steps: run.currentStep, evidenceCount: run.evidenceItems.length },
-          expectedState: { runStatus: 'COMPLETED' },
-          message: `Business objective successfully achieved and verified (${verifiedEvidenceCount} evidence files SHA-256 verified).`,
-        }
-      };
-    }
-
-    return {
-      businessOutcome: 'PENDING',
-      verification: {
-        status: 'UNAVAILABLE',
+        criteria: [
+          {
+            id: 'CRIT-EXEC',
+            description: 'Computer-use execution runner completed successfully',
+            required: true,
+            status: 'FAILED',
+            evidenceIds: [],
+            reason: run.errorMessage || 'Execution failed'
+          }
+        ],
+        comparisonResult: 'FAILED' as any,
+        evidence: run.evidenceItems.map(e => e.id),
+        unverifiedCriteria: ['Computer-use execution runner completion'],
+        message: `Computer-use execution failed: ${run.errorMessage || 'Execution interrupted'}`,
         verifiedAt: new Date(),
-        criteria: [],
-        evidenceIds: [],
-        actualState: { runStatus: run.status },
-        expectedState: { runStatus: 'COMPLETED' },
-        message: 'Execution in progress',
+      };
+    }
+
+    // CRITICAL FIX: If no actual business state was independently observed:
+    // Do NOT claim RESOLVED or VERIFIED merely because Coasty execution finished!
+    if (!observedState) {
+      return {
+        status: 'UNAVAILABLE',
+        businessOutcome: 'UNAVAILABLE',
+        criteria: [
+          {
+            id: 'CRIT-OBS',
+            description: 'Independent observation of business ledger state',
+            required: true,
+            status: 'UNAVAILABLE',
+            evidenceIds: [],
+            reason: 'No actual business state has been independently observed or submitted yet.'
+          }
+        ],
+        expectedState,
+        observedState: undefined,
+        comparisonResult: 'UNAVAILABLE',
+        evidence: run.evidenceItems.map(e => e.id),
+        unverifiedCriteria: ['Independent observation of business ledger state'],
+        message: 'Coasty execution finished, but business outcome is UNAVAILABLE because actual business state has not been independently observed or verified.',
+        verifiedAt: new Date(),
+      };
+    }
+
+    // Perform Deterministic Comparison when observedState exists
+    const comparisonResult = this.compareBusinessState(expectedState, observedState);
+
+    // Verify Evidence Integrity
+    const verifiedEvidenceIds: string[] = [];
+    for (const ev of run.evidenceItems) {
+      const integrity = await this.verifyEvidenceIntegrity(ev.id);
+      if (integrity.status === 'VERIFIED') {
+        verifiedEvidenceIds.push(ev.id);
       }
-    };
+    }
+
+    const hasEvidence = run.evidenceItems.length > 0;
+
+    // Build Verification Criteria Checklist
+    const criteria: VerificationCriterion[] = [
+      {
+        id: 'CRIT-1',
+        description: 'Computer-use execution completed successfully',
+        required: true,
+        status: run.status === 'COMPLETED' ? 'VERIFIED' : 'FAILED',
+        evidenceIds: [],
+      },
+      {
+        id: 'CRIT-2',
+        description: 'Target record reference match',
+        required: true,
+        status: (expectedState && observedState.recordReference === expectedState.recordReference) ? 'VERIFIED' : 'FAILED',
+        evidenceIds: observedState.evidenceIds || [],
+        expected: expectedState?.recordReference,
+        observed: observedState.recordReference,
+      },
+      {
+        id: 'CRIT-3',
+        description: 'Observed business state matches expected state',
+        required: true,
+        status: comparisonResult === 'MATCH' ? 'VERIFIED' : comparisonResult === 'PARTIAL' ? 'PARTIAL' : 'FAILED',
+        evidenceIds: observedState.evidenceIds || [],
+        expected: expectedState?.fields,
+        observed: observedState.fields,
+      },
+      {
+        id: 'CRIT-4',
+        description: 'Cryptographic SHA-256 evidence integrity validated',
+        required: hasEvidence, // Required only when evidence items are linked
+        status: hasEvidence ? (verifiedEvidenceIds.length > 0 ? 'VERIFIED' : 'UNAVAILABLE') : 'VERIFIED',
+        evidenceIds: verifiedEvidenceIds,
+      }
+    ];
+
+    const allMandatoryPassed = criteria.every(c => !c.required || c.status === 'VERIFIED');
+
+    if (allMandatoryPassed && comparisonResult === 'MATCH') {
+      return {
+        status: 'VERIFIED',
+        businessOutcome: 'RESOLVED',
+        criteria,
+        expectedState,
+        observedState,
+        comparisonResult: 'MATCH',
+        evidence: verifiedEvidenceIds,
+        unverifiedCriteria: [],
+        message: 'Business outcome successfully verified against observed business state and cryptographic evidence.',
+        verifiedAt: new Date(),
+      };
+    } else {
+      return {
+        status: comparisonResult === 'PARTIAL' ? 'PARTIAL' : 'FAILED',
+        businessOutcome: 'FAILED',
+        criteria,
+        expectedState,
+        observedState,
+        comparisonResult,
+        evidence: verifiedEvidenceIds,
+        unverifiedCriteria: criteria.filter(c => c.status !== 'VERIFIED').map(c => c.description),
+        message: `Business outcome verification failed. Comparison result: ${comparisonResult}.`,
+        verifiedAt: new Date(),
+      };
+    }
   }
 }
 

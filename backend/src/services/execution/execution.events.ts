@@ -98,7 +98,7 @@ export class ExecutionEventProcessor {
       validateRunStateTransition(run.status, RunStatus.APPROVAL_REQUIRED);
       await prisma.agentRun.update({
         where: { id: run.id },
-        data: { status: RunStatus.APPROVAL_REQUIRED, businessOutcome: 'ESCALATED' }
+        data: { status: RunStatus.APPROVAL_REQUIRED, businessOutcome: 'ESCALATED', verificationStatus: 'UNAVAILABLE' }
       });
 
       if (run.exceptionCaseId) {
@@ -134,21 +134,21 @@ export class ExecutionEventProcessor {
         }
       });
 
-      // Run Business Outcome Verifier
-      const verResult = await outcomeVerifier.verifyRun(run.id);
+      // Strict Outcome Verification: Will evaluate to UNAVAILABLE unless observed business state exists!
+      const report = await outcomeVerifier.verifyRun(run.id);
 
       await prisma.agentRun.update({
         where: { id: run.id },
         data: {
-          businessOutcome: verResult.businessOutcome,
-          verificationStatus: verResult.verification.status,
+          businessOutcome: report.businessOutcome,
+          verificationStatus: report.status,
         }
       });
 
       if (run.exceptionCaseId) {
         await prisma.exceptionCase.update({
           where: { id: run.exceptionCaseId },
-          data: { status: verResult.businessOutcome === 'RESOLVED' ? CaseStatus.RESOLVED : CaseStatus.ESCALATED }
+          data: { status: report.businessOutcome === 'RESOLVED' ? CaseStatus.RESOLVED : CaseStatus.ESCALATED }
         });
       }
     } else if (event.event_type === 'run_failed') {
@@ -192,7 +192,6 @@ export class ExecutionEventProcessor {
 
     if (stages.length === 0) return;
 
-    // Map step count to 6 stages
     const targetStageIndex = Math.min(Math.floor((currentStep - 1) / 2), stages.length - 1);
     const targetStage = stages[targetStageIndex];
 
@@ -202,8 +201,8 @@ export class ExecutionEventProcessor {
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
-          verificationStatus: 'VERIFIED',
-          result: `Stage completed at step ${currentStep}`
+          verificationStatus: 'UNAVAILABLE', // Must be independently verified by Verifier
+          result: `Stage executed at step ${currentStep}`
         }
       });
     }

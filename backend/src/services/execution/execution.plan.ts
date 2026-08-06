@@ -1,4 +1,4 @@
-import { ExecutionPlan, ExecutionStageDef } from './execution.types.js';
+import { ExecutionPlan, ExecutionStageDef, BusinessResolutionContract } from './execution.types.js';
 import { policyEvaluator } from './execution.policy.js';
 
 export class ExecutionPlanBuilder {
@@ -36,10 +36,40 @@ export class ExecutionPlanBuilder {
       'Application error or unexpected navigation behavior',
     ];
 
-    return {
+    const contract: BusinessResolutionContract = {
       objective: exceptionCase
-        ? `Investigate and resolve ${exceptionCase.exceptionType} for ${exceptionCase.customerName} ($${exceptionCase.amount} ${exceptionCase.currency})`
-        : `Execute workflow: ${workflow.name}`,
+        ? `Resolve ${exceptionCase.exceptionType} for ${exceptionCase.customerName}`
+        : `Execute ${workflow?.name || 'Workflow'}`,
+      expectedState: exceptionCase ? {
+        recordReference: `case/${exceptionCase.caseNumber}`,
+        fields: { status: 'RESOLVED', amount: exceptionCase.amount }
+      } : undefined,
+      verificationCriteria: [
+        {
+          id: 'CRIT-EXEC',
+          description: 'Computer-use execution completed successfully',
+          required: true,
+          status: 'UNAVAILABLE',
+          evidenceIds: []
+        },
+        {
+          id: 'CRIT-MATCH',
+          description: 'Observed business state matches expected state',
+          required: true,
+          status: 'UNAVAILABLE',
+          evidenceIds: []
+        }
+      ],
+      requiredEvidenceTypes: ['SCREENSHOT', 'RECEIPT'],
+      allowedResolutionActions: ['APPLY_PAYMENT', 'ADJUST_LEDGER'],
+      approvalRequirements: {
+        amountThreshold: threshold,
+        requiredRole: 'Finance Operations Manager'
+      }
+    };
+
+    return {
+      objective: contract.objective,
       caseContext: {
         caseId: exceptionCase?.id,
         caseNumber: exceptionCase?.caseNumber,
@@ -55,6 +85,7 @@ export class ExecutionPlanBuilder {
       forbiddenActions,
       policy,
       stages,
+      contract,
       verificationCriteria,
       stoppingConditions,
     };
