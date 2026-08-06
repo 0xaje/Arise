@@ -2,9 +2,9 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
-import { EventService } from '../../services/eventService.js';
 import { AuditService } from '../../services/auditService.js';
-import { WorkflowStatus, RunStatus } from '@prisma/client';
+import { orchestrator } from '../../services/execution/execution.orchestrator.js';
+import { WorkflowStatus } from '@prisma/client';
 
 const createWorkflowSchema = z.object({
   name: z.string().min(1),
@@ -84,63 +84,10 @@ export async function workflowRoutes(fastify: FastifyInstance) {
     const idempotencyHeader = request.headers['idempotency-key'] as string | undefined;
     const idempotencyKey = body.idempotencyKey || idempotencyHeader;
 
-    // Check Idempotency Key
-    if (idempotencyKey) {
-      const existingRun = await prisma.agentRun.findUnique({
-        where: { idempotencyKey },
-        include: { workflow: true, exceptionCase: true }
-      });
-      if (existingRun) {
-        request.log.info({ idempotencyKey, runId: existingRun.runId }, 'Returning idempotent AgentRun');
-        return existingRun;
-      }
-    }
-
-    // 1. Validate Workflow
-    const workflow = await prisma.workflow.findUnique({ where: { id } });
-    if (!workflow) {
-      throw new AppError('WORKFLOW_NOT_FOUND', `Workflow with id '${id}' not found`, 404);
-    }
-    if (workflow.status !== WorkflowStatus.ACTIVE) {
-      throw new AppError('WORKFLOW_INACTIVE', `Workflow '${workflow.name}' is not ACTIVE (current: ${workflow.status})`, 400);
-    }
-
-    // 2. Validate ExceptionCase if provided
-    let exceptionCase = null;
-    if (body.exceptionCaseId) {
-      exceptionCase = await prisma.exceptionCase.findUnique({ where: { id: body.exceptionCaseId } });
-      if (!exceptionCase) {
-        throw new AppError('EXCEPTION_NOT_FOUND', `ExceptionCase with id '${body.exceptionCaseId}' not found`, 404);
-      }
-    }
-
-    // 3. Create AgentRun in QUEUED state
-    const runCount = await prisma.agentRun.count();
-    const runId = `RUN-${10000 + runCount + 1}`;
-
-    const createdRun = await prisma.agentRun.create({
-      data: {
-        runId,
-        workflowId: workflow.id,
-        exceptionCaseId: exceptionCase ? exceptionCase.id : null,
-        status: RunStatus.QUEUED,
-        totalSteps: workflow.maxSteps,
-        idempotencyKey: idempotencyKey || null,
-      },
-      include: {
-        workflow: true,
-        exceptionCase: true
-      }
-    });
-
-    // 4. Emit LiveEvent RUN_CREATED
-    await EventService.emit({
-      runId: createdRun.id,
-      type: 'RUN_CREATED',
-      message: `Created AgentRun ${createdRun.runId} for workflow '${workflow.name}'. Status: QUEUED.`,
-      payloadJson: { runId: createdRun.runId, workflowId: workflow.id, exceptionCaseId: createdRun.exceptionCaseId },
-      actorType: 'USER',
-      actorId: 'operator'
+    const createdRun = await orchestrator.createAndStartRun({
+      workflowId: id,
+      exceptionCaseId: body.exceptionCaseId,
+      idempotencyKey,
     });
 
     reply.status(201);

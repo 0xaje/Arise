@@ -110,6 +110,8 @@ enum EventType {
   RUN_RECOVERING
   RUN_COMPLETED
   RUN_FAILED
+  BUSINESS_OUTCOME_VERIFIED
+  BUSINESS_OUTCOME_FAILED
 }
 
 model Workflow {
@@ -158,32 +160,55 @@ model ExceptionCase {
 }
 
 model AgentRun {
-  id              String    @id @default(uuid())
-  runId           String    @unique
-  externalRunId   String?   @unique
-  workflowId      String
-  exceptionCaseId String?
-  status          RunStatus @default(QUEUED)
-  startedAt       DateTime?
-  completedAt     DateTime?
-  durationMs      Int?
-  currentStep     Int       @default(0)
-  totalSteps      Int       @default(0)
-  outcome         String?
-  errorCode       String?
-  errorMessage    String?
-  idempotencyKey  String?   @unique
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  runId              String    @unique
+  externalRunId      String?   @unique
+  workflowId         String
+  exceptionCaseId    String?
+  status             RunStatus @default(QUEUED)
+  businessOutcome    String    @default("PENDING")
+  verificationStatus String    @default("UNAVAILABLE")
+  executionPlanJson  String?
+  recoveryCount      Int       @default(0)
+  startedAt          DateTime?
+  completedAt        DateTime?
+  durationMs         Int?
+  currentStep        Int       @default(0)
+  totalSteps         Int       @default(0)
+  outcome            String?
+  errorCode          String?
+  errorMessage       String?
+  idempotencyKey     String?   @unique
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   workflow         Workflow          @relation(fields: [workflowId], references: [id])
   exceptionCase    ExceptionCase?    @relation(fields: [exceptionCaseId], references: [id])
   agentSteps       AgentStep[]
+  businessStages   BusinessStage[]
   evidenceItems    EvidenceItem[]
   approvalRequests ApprovalRequest[]
   liveEvents       LiveEvent[]
 
   @@map("agent_runs")
+}
+
+model BusinessStage {
+  id                 String    @id @default(uuid())
+  runId              String
+  sequence           Int
+  name               String
+  objective          String
+  status             String    @default("PENDING")
+  startedAt          DateTime?
+  completedAt        DateTime?
+  result             String?
+  verificationStatus String    @default("UNAVAILABLE")
+  createdAt          DateTime  @default(now())
+
+  run AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("business_stages")
 }
 
 model AgentStep {
@@ -215,11 +240,13 @@ model EvidenceItem {
   stepId             String?
   externalEvidenceId String?
   type               EvidenceType
+  source             String       @default("COASTY")
   storageUrl         String
   capturedAt         DateTime     @default(now())
   sha256             String
   mimeType           String
   sizeBytes          Int
+  verificationStatus String       @default("UNAVAILABLE")
   metadataJson       String?
   createdAt          DateTime     @default(now())
 

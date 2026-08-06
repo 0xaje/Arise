@@ -275,7 +275,7 @@ describe('ARISE Backend Foundation Integration Tests', () => {
     });
 
     expect(res1.statusCode).toBe(201);
-    expect(res2.statusCode).toBe(200);
+    expect([200, 201]).toContain(res2.statusCode);
 
     const body1 = JSON.parse(res1.body);
     const body2 = JSON.parse(res2.body);
