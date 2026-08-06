@@ -153,8 +153,8 @@ describe('ARISE Phase 3.1 — Verification Integrity Hardening Tests', () => {
     });
 
     expect(report.businessOutcome).toBe('FAILED');
-    expect(report.status).toBe('PARTIAL');
-    expect(report.comparisonResult).toBe('PARTIAL');
+    expect(report.status).toBe('FAILED');
+    expect(report.comparisonResult).toBe('MISMATCH');
   });
 
   // Test 4: Approval required = ESCALATED

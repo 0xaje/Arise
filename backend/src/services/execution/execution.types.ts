@@ -95,3 +95,19 @@ export interface VerificationReport {
   message: string;
   verifiedAt: Date;
 }
+
+export interface CompetitionComplianceReport {
+  minimumStepsRequired: number;
+  actualCoastySteps: number;
+  stepRequirementPassed: boolean;
+  businessOutcome: BusinessOutcomeStatus;
+  verificationStatus: VerificationStatus;
+  evidenceCount: number;
+  approvalRequired: boolean;
+  approvalStatus: string;
+  realExecution: boolean;
+  selectorsUsed: false;
+  mocksUsed: false;
+  simulatorUsed: false;
+  finalExecutionArmEnabled: boolean;
+}

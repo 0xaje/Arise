@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import { orchestrator } from '../../services/execution/execution.orchestrator.js';
+import { competitionService } from '../../services/execution/competition.service.js';
 
 export async function runRoutes(fastify: FastifyInstance) {
   // GET /api/v1/runs
@@ -38,6 +39,18 @@ export async function runRoutes(fastify: FastifyInstance) {
     }
 
     return run;
+  });
+
+  // GET /api/v1/runs/:id/compliance
+  fastify.get('/runs/:id/compliance', async (request) => {
+    const { id } = request.params as { id: string };
+    const run = await prisma.agentRun.findFirst({ where: { OR: [{ id }, { runId: id }] } });
+
+    if (!run) {
+      throw new AppError('RUN_NOT_FOUND', `AgentRun '${id}' not found`, 404);
+    }
+
+    return competitionService.generateComplianceReport(run.id);
   });
 
   // GET /api/v1/runs/:id/stages

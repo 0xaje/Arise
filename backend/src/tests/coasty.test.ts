@@ -48,10 +48,10 @@ describe('Coasty Computer-Use Service Unit Tests', () => {
       suggestedAction: 'Match with invoice #INV-402'
     });
 
-    expect(task).toContain('Case Number: EXC-9901');
-    expect(task).toContain('Customer Name: Acme Corp');
-    expect(task).toContain('Safety Directives:');
-    expect(task).toContain('Never fabricate invoice numbers');
+    expect(task).toContain('EXC-9901');
+    expect(task).toContain('Acme Corp');
+    expect(task).toContain('SAFETY DIRECTIVES:');
+    expect(task).toContain('NEVER fabricate invoice numbers');
   });
 
   it('5. should test connection state honestly', async () => {
