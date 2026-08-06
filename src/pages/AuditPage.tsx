@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AuditLog } from '../types/arise';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Hash } from 'lucide-react';
 
 interface AuditPageProps {
   logs: AuditLog[];
@@ -16,7 +16,7 @@ export const AuditPage: React.FC<AuditPageProps> = ({ logs }) => {
             Immutable Audit Trail
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            SOX & SOC2 compliant record of all autonomous system actions and cryptographic verification hashes.
+            SOX & SOC2 compliant real-time ledger of autonomous actions and SHA-256 cryptographic verification hashes.
           </p>
         </div>
       </div>
@@ -24,7 +24,7 @@ export const AuditPage: React.FC<AuditPageProps> = ({ logs }) => {
       <div className="rounded-xl border border-zinc-800 bg-[#111114] overflow-hidden shadow-sm">
         {logs.length === 0 ? (
           <div className="glass-panel p-12 text-center text-xs text-zinc-500 font-mono">
-            No audit logs emitted yet. Actions performed by ARISE policy engine or Coasty agents will appear here.
+            No audit logs recorded in PostgreSQL database yet. Actions emitted by backend policies or Coasty agent will appear here with cryptographic hashes.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -36,20 +36,33 @@ export const AuditPage: React.FC<AuditPageProps> = ({ logs }) => {
                   <th className="px-4 py-3.5">Action</th>
                   <th className="px-4 py-3.5">Target Resource</th>
                   <th className="px-4 py-3.5">Details</th>
-                  <th className="px-4 py-3.5">Verification Hash</th>
+                  <th className="px-4 py-3.5">SHA-256 Verification Hash</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60 font-mono">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-zinc-900/40 transition-colors">
-                    <td className="px-4 py-4 text-zinc-400">{log.timestamp}</td>
-                    <td className="px-4 py-4 text-blue-400 font-semibold">{log.actor}</td>
-                    <td className="px-4 py-4">
-                      <span className="rounded bg-zinc-800 px-2 py-0.5 text-zinc-200">{log.action}</span>
+                    <td className="px-4 py-4 text-zinc-400 whitespace-nowrap">
+                      {new Date(log.timestamp).toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-zinc-300">{log.targetResource}</td>
-                    <td className="px-4 py-4 font-sans text-zinc-300 text-xs">{log.details}</td>
-                    <td className="px-4 py-4 text-emerald-400">{log.verificationHash}</td>
+                    <td className="px-4 py-4 text-blue-400 font-semibold whitespace-nowrap">
+                      {log.actorType}:{log.actorId}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="rounded bg-zinc-800 px-2 py-0.5 text-zinc-200 font-semibold">{log.action}</span>
+                    </td>
+                    <td className="px-4 py-4 text-zinc-300 whitespace-nowrap">
+                      {log.resourceType}:{log.resourceId}
+                    </td>
+                    <td className="px-4 py-4 font-sans text-zinc-300 text-xs max-w-xs truncate">
+                      {log.detailsJson || 'N/A'}
+                    </td>
+                    <td className="px-4 py-4 text-emerald-400 font-mono text-[11px] whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 bg-emerald-950/40 text-emerald-300 px-2 py-1 rounded border border-emerald-800/40">
+                        <Hash className="size-3 text-emerald-400" />
+                        {log.verificationHash ? `${log.verificationHash.substring(0, 16)}...${log.verificationHash.substring(48)}` : 'HASH_PENDING'}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -175,7 +175,7 @@ export const RunWorkflowModal: React.FC<RunWorkflowModalProps> = ({ isOpen, onCl
       setExecutionLogs([
         `[${new Date().toLocaleTimeString()}] Run ${runResult.runId} completed.`,
         `Status: ${runResult.status}`,
-        `Summary: ${runResult.logSummary}`
+        `Summary: ${runResult.outcome || runResult.errorMessage || 'Run queued successfully'}`
       ]);
       onTriggerRun(selectedWf);
     } catch (err: any) {

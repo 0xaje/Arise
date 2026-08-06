@@ -56,7 +56,7 @@ export const ReportsPage: React.FC = () => {
             </div>
             <div className="rounded-xl border border-zinc-800 bg-[#111114] p-5">
               <div className="text-xs text-zinc-400 font-medium">Mean Time to Resolution (MTTR)</div>
-              <div className="text-2xl font-bold text-white mt-1">{summary.mttrSeconds || 1.4} Seconds</div>
+              <div className="text-2xl font-bold text-white mt-1">{summary.mttrSeconds !== undefined ? summary.mttrSeconds : 0} Seconds</div>
               <div className="text-xs text-blue-400 font-medium mt-1">Real-time resolution speed</div>
             </div>
             <div className="rounded-xl border border-zinc-800 bg-[#111114] p-5">

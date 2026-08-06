@@ -271,7 +271,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
                   <div>
                     <div className="text-xs text-zinc-200 font-semibold leading-relaxed">{evt.message}</div>
                     <div className="text-[10px] text-zinc-400 mt-1 font-mono flex items-center gap-2">
-                      <span>Emitter: <strong className="text-zinc-300">{evt.source}</strong></span>
+                      <span>Event Type: <strong className="text-zinc-300">{evt.type}</strong></span>
                     </div>
                   </div>
                 </div>

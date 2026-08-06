@@ -16,18 +16,19 @@ export interface ExceptionCase {
   caseNumber: string;
   customerName: string;
   accountNumber: string;
-  exceptionType: 'Unapplied Cash' | 'Discrepancy' | 'Chargeback' | 'Overpayment' | 'Tax Variance';
+  exceptionType: string;
   amount: number;
   currency: string;
-  status: 'Pending' | 'Investigating' | 'Resolved' | 'Escalated';
-  riskScore: 'Low' | 'Medium' | 'High' | 'Critical';
-  sourceSystem: 'Stripe' | 'NetSuite' | 'Salesforce' | 'Bank Transfer';
+  status: string;
+  riskScore: string;
+  sourceSystem: string;
   createdAt: string;
   updatedAt: string;
-  assignedAgent: string;
   description: string;
   suggestedAction: string;
   confidence: number;
+  assignedWorkflowId?: string;
+  assignedWorkflow?: any;
 }
 
 export interface WorkflowItem {
@@ -35,77 +36,109 @@ export interface WorkflowItem {
   name: string;
   category: string;
   triggerEvent: string;
-  status: 'Active' | 'Paused' | 'Draft';
+  status: string;
   autoApprovalThreshold: number;
-  totalResolved: number;
-  successRate: number;
-  lastRun: string;
-  description: string;
+  maxSteps: number;
+  timeoutSeconds: number;
+  retryLimit: number;
+  createdAt: string;
+  updatedAt: string;
+  description?: string;
+  _count?: {
+    agentRuns: number;
+  };
 }
 
 export interface AgentRun {
   id: string;
   runId: string;
-  workflowName: string;
-  status: 'Completed' | 'In Progress' | 'Escalated' | 'Failed';
-  startedAt: string;
-  durationMs: number;
-  targetCase: string;
-  stepsCount: number;
-  evidenceId?: string;
-  logSummary: string;
+  externalRunId?: string;
+  workflowId: string;
+  workflow?: WorkflowItem;
+  exceptionCaseId?: string;
+  exceptionCase?: ExceptionCase;
+  status: string;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
+  currentStep: number;
+  totalSteps: number;
+  outcome?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  idempotencyKey?: string;
+  createdAt: string;
+  updatedAt: string;
+  agentSteps?: any[];
+  evidenceItems?: any[];
+  approvalRequests?: any[];
+  liveEvents?: any[];
 }
 
 export interface ApprovalRequest {
   id: string;
   approvalId: string;
-  caseNumber: string;
-  type: string;
-  customerName: string;
-  amount: number;
-  reasonForEscalation: string;
+  runId: string;
+  exceptionCaseId?: string;
+  reason: string;
+  proposedAction: string;
   requiredRole: string;
-  createdAt: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
-  agentRecommendation: string;
+  status: string;
+  requestedAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+  decisionComment?: string;
+  run?: AgentRun;
+  exceptionCase?: ExceptionCase;
 }
 
 export interface ConnectionSystem {
   id: string;
   name: string;
-  type: 'Payment Gateway' | 'ERP' | 'CRM' | 'Browser Agent';
-  status: 'Connected' | 'Disconnected' | 'Error' | 'Configuring';
-  lastSync: string;
+  type: string;
+  status: string;
   endpointUrl: string;
-  healthScore: number;
-  iconName: string;
+  lastVerifiedAt?: string;
+  metadataJson?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {
   id: string;
   timestamp: string;
-  actor: string;
+  actorType: string;
+  actorId: string;
   action: string;
-  targetResource: string;
-  details: string;
+  resourceType: string;
+  resourceId: string;
+  detailsJson?: string;
+  previousHash?: string;
   verificationHash: string;
 }
 
 export interface EvidenceItem {
   id: string;
-  evidenceCode: string;
-  caseNumber: string;
-  type: 'DOM Screenshot' | 'PDF Receipt' | 'API Payload' | 'DB Snapshot';
+  runId: string;
+  stepId?: string;
+  externalEvidenceId?: string;
+  type: string;
+  storageUrl: string;
   capturedAt: string;
-  verifiedBy: string;
-  url: string;
-  fileSize: string;
+  sha256: string;
+  mimeType: string;
+  sizeBytes: number;
+  metadataJson?: string;
+  createdAt: string;
+  run?: AgentRun;
+  step?: any;
 }
 
 export interface LiveActivityEvent {
   id: string;
-  timestamp: string;
-  type: 'info' | 'warning' | 'success' | 'error';
+  runId?: string;
+  type: string;
   message: string;
-  source: string;
+  payloadJson?: string;
+  timestamp: string;
 }

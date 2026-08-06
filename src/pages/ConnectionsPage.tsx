@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConnectionSystem } from '../types/arise';
-import { Network, Zap, Database, Users, Bot, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Network, Zap, Database, Users, Bot, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ConnectionsPageProps {
   connections: ConnectionSystem[];
@@ -59,7 +59,7 @@ export const ConnectionsPage: React.FC<ConnectionsPageProps> = ({ connections, o
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-zinc-800/80 text-xs">
-              <span className="text-zinc-500">Last sync: <strong className="text-zinc-300 font-mono">{conn.lastSync}</strong></span>
+              <span className="text-zinc-500">Last verified: <strong className="text-zinc-300 font-mono">{conn.lastVerifiedAt ? new Date(conn.lastVerifiedAt).toLocaleString() : 'Not verified yet'}</strong></span>
               <button
                 onClick={() => onToggleConnect(conn.id)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
