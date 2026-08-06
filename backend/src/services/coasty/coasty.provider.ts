@@ -19,15 +19,41 @@ export class CoastyExecutionProvider implements ExecutionProvider {
     return coastyClient.testConnection();
   }
 
+  // Get or provision live Coasty machine ID
+  private async resolveMachineId(): Promise<string> {
+    let machineId = process.env.COASTY_MACHINE_ID;
+    if (machineId && machineId.trim().length > 0 && !machineId.includes('mac-m1-prod')) {
+      return machineId;
+    }
+
+    try {
+      const machines = await coastyClient.getMachines();
+      if (Array.isArray(machines) && machines.length > 0 && machines[0].id) {
+        return machines[0].id;
+      }
+
+      // Provision a live machine if none exist
+      const newMachine = await coastyClient.createMachine('arise-live-runner');
+      if (newMachine && newMachine.id) {
+        return newMachine.id;
+      }
+    } catch (err: any) {
+      logger.warn({ err: err?.message }, 'Failed to list/provision Coasty machine, using environment fallback');
+    }
+
+    if (!machineId) {
+      throw new AppError('MACHINE_ID_MISSING', 'Could not resolve or provision a live Coasty machine ID.', 400);
+    }
+
+    return machineId;
+  }
+
   public async startRun(params: ExecutionRunParams): Promise<void> {
     if (!coastyClient.isConfigured()) {
       throw new AppError('COASTY_NOT_CONFIGURED', 'Coasty API connection is not configured. Missing COASTY_API_KEY.', 400);
     }
 
-    const machineId = process.env.COASTY_MACHINE_ID;
-    if (!machineId) {
-      throw new AppError('MACHINE_ID_MISSING', 'COASTY_MACHINE_ID environment variable is missing.', 400);
-    }
+    const machineId = await this.resolveMachineId();
 
     // 1. Fetch AgentRun and ExceptionCase context
     const run = await prisma.agentRun.findUnique({

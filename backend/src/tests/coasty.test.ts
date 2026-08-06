@@ -54,10 +54,16 @@ describe('Coasty Computer-Use Service Unit Tests', () => {
     expect(task).toContain('Never fabricate invoice numbers');
   });
 
-  it('5. should report unconfigured status honestly when COASTY_API_KEY is absent', async () => {
+  it('5. should test connection state honestly', async () => {
     const testResult = await coastyClient.testConnection();
-    expect(testResult.success).toBe(false);
-    expect(testResult.message).toContain('Connection not configured');
+    expect(testResult.message).toBeDefined();
+    if (coastyClient.isConfigured()) {
+      expect(testResult.success).toBe(true);
+      expect(testResult.message).toContain('CONNECTED');
+    } else {
+      expect(testResult.success).toBe(false);
+      expect(testResult.message).toContain('Connection not configured');
+    }
   });
 
   it('6. should generate deterministic event deduplication keys', () => {

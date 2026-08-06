@@ -31,6 +31,47 @@ export class CoastyClient {
     return headers;
   }
 
+  // GET /v1/machines (List Machines)
+  public async getMachines(): Promise<any[]> {
+    const url = `${this.baseUrl}/machines`;
+    const headers = this.getHeaders();
+
+    try {
+      const res = await fetch(url, { method: 'GET', headers });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new CoastyError('COASTY_API_ERROR', `Failed to list machines: ${errorText}`, res.status, false);
+      }
+      const data = await res.json() as any;
+      return Array.isArray(data) ? data : data.data || data.items || data.machines || [];
+    } catch (err: any) {
+      if (err instanceof CoastyError) throw err;
+      throw new CoastyError('NETWORK_ERROR', `Failed to connect to Coasty machines API: ${err?.message}`, 503, true);
+    }
+  }
+
+  // POST /v1/machines (Provision Machine)
+  public async createMachine(name: string = 'arise-live-runner'): Promise<any> {
+    const url = `${this.baseUrl}/machines`;
+    const headers = this.getHeaders();
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ display_name: name }),
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new CoastyError('COASTY_API_ERROR', `Failed to provision machine: ${errorText}`, res.status, false);
+      }
+      return res.json();
+    } catch (err: any) {
+      if (err instanceof CoastyError) throw err;
+      throw new CoastyError('NETWORK_ERROR', `Failed to provision Coasty machine: ${err?.message}`, 503, true);
+    }
+  }
+
   // POST /v1/runs (Create Task Run)
   public async createRun(payload: CreateCoastyRunPayload, idempotencyKey?: string): Promise<CoastyRun> {
     const url = `${this.baseUrl}/runs`;
