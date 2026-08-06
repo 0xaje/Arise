@@ -67,6 +67,36 @@ export function App() {
 
   useEffect(() => {
     fetchLiveData();
+
+    // 3-Second Background Auto-Sync Interval
+    const interval = setInterval(() => {
+      ariseApi.checkHealth().then((health) => {
+        if (health.status === 'ok') {
+          setIsBackendConnected(true);
+          Promise.all([
+            ariseApi.getExceptions().catch(() => []),
+            ariseApi.getWorkflows().catch(() => []),
+            ariseApi.getRuns().catch(() => []),
+            ariseApi.getApprovals().catch(() => []),
+            ariseApi.getConnections().catch(() => []),
+            ariseApi.getAuditLogs().catch(() => []),
+            ariseApi.getEvidence().catch(() => []),
+            ariseApi.getLiveEvents().catch(() => []),
+          ]).then(([exc, wf, rn, app, conn, aud, evd, evts]) => {
+            setExceptions(Array.isArray(exc) ? exc : []);
+            setWorkflows(Array.isArray(wf) ? wf : []);
+            setRuns(Array.isArray(rn) ? rn : []);
+            setApprovals(Array.isArray(app) ? app : []);
+            setConnections(Array.isArray(conn) ? conn : []);
+            setAuditLogs(Array.isArray(aud) ? aud : []);
+            setEvidence(Array.isArray(evd) ? evd : []);
+            setLiveEvents(Array.isArray(evts) ? evts : []);
+          });
+        }
+      }).catch(() => setIsBackendConnected(false));
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Modals
