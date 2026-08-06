@@ -14,7 +14,6 @@ import {
   ArrowRight,
   RefreshCw,
   Sparkles,
-  Shield,
   Bot,
   Layers
 } from 'lucide-react';
@@ -36,6 +35,16 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   liveEvents,
   exceptions
 }) => {
+  // Real dynamic calculations from API state
+  const pendingExceptions = exceptions.filter(e => e.status !== 'Resolved');
+  const resolvedExceptions = exceptions.filter(e => e.status === 'Resolved');
+  const escalatedExceptions = exceptions.filter(e => e.status === 'Escalated');
+
+  const settledRevenueTotal = resolvedExceptions.reduce((acc, curr) => acc + curr.amount, 0);
+  const accuracyPercentage = exceptions.length > 0
+    ? ((resolvedExceptions.length / exceptions.length) * 100).toFixed(1)
+    : '100.0';
+
   const steps = [
     {
       step: '01',
@@ -134,7 +143,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         </div>
       </div>
 
-      {/* KPI Overview Cards */}
+      {/* Dynamic KPI Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div 
           onClick={() => onNavigate('/exceptions')}
@@ -147,8 +156,10 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-white">{exceptions.filter(e => e.status !== 'Resolved').length}</span>
-            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Action Required</span>
+            <span className="text-3xl font-extrabold text-white">{pendingExceptions.length}</span>
+            <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              {pendingExceptions.length > 0 ? 'Action Required' : 'Queue Clear'}
+            </span>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800/60 group-hover:text-indigo-300">
             <span>Inspect Queue</span>
@@ -167,8 +178,8 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-white">98.4%</span>
-            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">+1.2% this week</span>
+            <span className="text-3xl font-extrabold text-white">{accuracyPercentage}%</span>
+            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">Live Calculation</span>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800/60 group-hover:text-indigo-300">
             <span>View Workflows</span>
@@ -187,8 +198,10 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-white">2</span>
-            <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">Pending Governance</span>
+            <span className="text-3xl font-extrabold text-white">{escalatedExceptions.length}</span>
+            <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+              {escalatedExceptions.length > 0 ? 'Pending Governance' : 'All Approved'}
+            </span>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800/60 group-hover:text-indigo-300">
             <span>Review Approvals</span>
@@ -207,8 +220,10 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-white">$1.42M</span>
-            <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">This Month</span>
+            <span className="text-3xl font-extrabold text-white">
+              ${settledRevenueTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Live Total</span>
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800/60 group-hover:text-indigo-300">
             <span>Open Intelligence</span>
@@ -240,26 +255,30 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
         </div>
 
         <div className="mt-5 space-y-3">
-          {liveEvents.map((evt) => (
-            <div 
-              key={evt.id} 
-              className="flex items-start justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 transition-all hover:border-zinc-700/80 hover:bg-zinc-900/70"
-            >
-              <div className="flex items-start gap-3.5">
-                <div className={`mt-1 size-2.5 rounded-full shrink-0 ${
-                  evt.type === 'success' ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' :
-                  evt.type === 'warning' ? 'bg-amber-400 shadow-lg shadow-amber-500/50' : 'bg-indigo-400'
-                }`} />
-                <div>
-                  <div className="text-xs text-zinc-200 font-semibold leading-relaxed">{evt.message}</div>
-                  <div className="text-[10px] text-zinc-400 mt-1 font-mono flex items-center gap-2">
-                    <span>Emitter: <strong className="text-zinc-300">{evt.source}</strong></span>
+          {liveEvents.length === 0 ? (
+            <div className="p-8 text-center text-xs text-zinc-500 font-mono">No operational events recorded yet.</div>
+          ) : (
+            liveEvents.map((evt) => (
+              <div 
+                key={evt.id} 
+                className="flex items-start justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 transition-all hover:border-zinc-700/80 hover:bg-zinc-900/70"
+              >
+                <div className="flex items-start gap-3.5">
+                  <div className={`mt-1 size-2.5 rounded-full shrink-0 ${
+                    evt.type === 'success' ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' :
+                    evt.type === 'warning' ? 'bg-amber-400 shadow-lg shadow-amber-500/50' : 'bg-indigo-400'
+                  }`} />
+                  <div>
+                    <div className="text-xs text-zinc-200 font-semibold leading-relaxed">{evt.message}</div>
+                    <div className="text-[10px] text-zinc-400 mt-1 font-mono flex items-center gap-2">
+                      <span>Emitter: <strong className="text-zinc-300">{evt.source}</strong></span>
+                    </div>
                   </div>
                 </div>
+                <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded">{evt.timestamp}</span>
               </div>
-              <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800/80 px-2 py-0.5 rounded">{evt.timestamp}</span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
