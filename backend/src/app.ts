@@ -146,17 +146,24 @@ export function buildApp() {
   });
 
   // Register API Routes under /api/v1
-  app.register(healthRoutes, { prefix: '/api/v1' });
-  app.register(exceptionRoutes, { prefix: '/api/v1' });
-  app.register(workflowRoutes, { prefix: '/api/v1' });
-  app.register(runRoutes, { prefix: '/api/v1' });
-  app.register(approvalRoutes, { prefix: '/api/v1' });
-  app.register(connectionRoutes, { prefix: '/api/v1' });
-  app.register(evidenceRoutes, { prefix: '/api/v1' });
-  app.register(auditRoutes, { prefix: '/api/v1' });
-  app.register(reportRoutes, { prefix: '/api/v1' });
-  app.register(eventRoutes, { prefix: '/api/v1' });
-  app.register(coastyWebhookRoutes, { prefix: '/api/v1' });
+  const routeModules = [
+    healthRoutes,
+    exceptionRoutes,
+    workflowRoutes,
+    runRoutes,
+    approvalRoutes,
+    connectionRoutes,
+    evidenceRoutes,
+    auditRoutes,
+    reportRoutes,
+    eventRoutes,
+    coastyWebhookRoutes,
+  ];
+
+  for (const routeModule of routeModules) {
+    app.register(routeModule, { prefix: '/api/v1' });
+    app.register(routeModule, { prefix: '' });
+  }
 
   return app;
 }

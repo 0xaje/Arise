@@ -9,7 +9,15 @@ import type {
   LiveActivityEvent 
 } from '../types/arise';
 
-const API_BASE_URL = import.meta.env.VITE_ARISE_API_URL || '/api/v1';
+const getBaseUrl = (): string => {
+  const envUrl = (import.meta.env.VITE_ARISE_API_URL || '/api/v1').trim().replace(/\/+$/, '');
+  if (!envUrl) return '/api/v1';
+  if (envUrl.endsWith('/api/v1')) return envUrl;
+  if (envUrl.endsWith('/api')) return `${envUrl}/v1`;
+  return `${envUrl}/api/v1`;
+};
+
+const API_BASE_URL = getBaseUrl();
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
