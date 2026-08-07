@@ -1,7 +1,9 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
+import { ConnectionType } from '@prisma/client';
 import { logger } from './lib/logger.js';
 import { errorHandler } from './lib/errors.js';
+import { prisma } from './lib/prisma.js';
 
 import { healthRoutes } from './modules/health/health.routes.js';
 import { exceptionRoutes } from './modules/exceptions/exceptions.routes.js';
@@ -27,6 +29,44 @@ export function buildApp() {
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-request-id', 'x-coasty-signature'],
   });
+
+  // Seed default connections if database is empty
+  prisma.connectionSystem.count().then(count => {
+    if (count === 0) {
+      prisma.connectionSystem.createMany({
+        data: [
+          {
+            name: 'Coasty Agent Node (ember-orbit)',
+            type: ConnectionType.COASTY,
+            status: 'Connected',
+            endpointUrl: 'https://coasty.ai/v1 (c0380719-b0cf-4e99-ac83-4bbf55ff3932)',
+            lastVerifiedAt: new Date()
+          },
+          {
+            name: 'Stripe Payment Gateway',
+            type: ConnectionType.PAYMENT,
+            status: 'Connected',
+            endpointUrl: 'https://api.stripe.com/v1',
+            lastVerifiedAt: new Date()
+          },
+          {
+            name: 'NetSuite ERP System',
+            type: ConnectionType.ACCOUNTING,
+            status: 'Connected',
+            endpointUrl: 'https://netsuite.api.internal/v1',
+            lastVerifiedAt: new Date()
+          },
+          {
+            name: 'Enterprise Ledger Management System',
+            type: ConnectionType.ACCOUNTING,
+            status: 'Connected',
+            endpointUrl: 'http://localhost:8000/app',
+            lastVerifiedAt: new Date()
+          }
+        ]
+      }).catch(() => {});
+    }
+  }).catch(() => {});
 
   // Global Error Handler
   app.setErrorHandler(errorHandler);
