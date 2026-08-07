@@ -54,8 +54,8 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
     {
       step: '01',
       title: 'Investigate',
-      subtitle: 'DOM Locater',
-      description: 'Coasty opens connected applications and locates the target exception case.',
+      subtitle: 'Visual Computer Use',
+      description: 'Coasty visually opens connected applications and locates the target exception case.',
       icon: Search,
       badge: 'Vision Agent',
       accent: 'from-blue-500/20 to-indigo-500/10 text-blue-400 border-blue-500/30'
@@ -91,7 +91,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
       step: '05',
       title: 'Verify',
       subtitle: 'Cryptographic Audit',
-      description: 'Captures DOM screenshots and records immutable verification hashes.',
+      description: 'Captures visual desktop screenshots and records immutable SHA-256 evidence hashes.',
       icon: FileCheck,
       badge: 'Evidence Proof',
       accent: 'from-cyan-500/20 to-blue-500/10 text-cyan-400 border-cyan-500/30'
