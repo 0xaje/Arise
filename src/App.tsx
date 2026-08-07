@@ -149,6 +149,9 @@ export function App() {
     fetchLiveData();
   };
 
+  const pendingExceptionsCount = exceptions.filter(e => e.status !== 'Resolved' && e.status !== 'RESOLVED').length;
+  const pendingApprovalsCount = approvals.filter(a => a.status === 'PENDING' || a.status === 'Pending').length;
+
   return (
     <AppShell
       currentRoute={currentRoute}
@@ -157,6 +160,8 @@ export function App() {
       onOpenRunWorkflow={() => setIsRunWfOpen(true)}
       onOpenReviewConnections={() => setIsConnDialogOpen(true)}
       isBackendConnected={isBackendConnected}
+      pendingExceptionsCount={pendingExceptionsCount}
+      pendingApprovalsCount={pendingApprovalsCount}
     >
       {/* Route Views */}
       {currentRoute === '/' && (

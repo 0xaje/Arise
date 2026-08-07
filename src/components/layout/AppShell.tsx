@@ -32,6 +32,8 @@ interface AppShellProps {
   onOpenRunWorkflow: () => void;
   onOpenReviewConnections: () => void;
   isBackendConnected: boolean;
+  pendingExceptionsCount?: number;
+  pendingApprovalsCount?: number;
   children: React.ReactNode;
 }
 
@@ -42,6 +44,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   onOpenRunWorkflow,
   onOpenReviewConnections,
   isBackendConnected,
+  pendingExceptionsCount = 0,
+  pendingApprovalsCount = 0,
   children
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -57,10 +61,22 @@ export const AppShell: React.FC<AppShellProps> = ({
     {
       title: 'Operations Loop',
       items: [
-        { id: '/exceptions' as RouteId, label: 'Exception Queue', icon: AlertTriangle, badge: '5', badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+        { 
+          id: '/exceptions' as RouteId, 
+          label: 'Exception Queue', 
+          icon: AlertTriangle, 
+          badge: pendingExceptionsCount > 0 ? String(pendingExceptionsCount) : undefined, 
+          badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+        },
         { id: '/workflows' as RouteId, label: 'Workflows', icon: Workflow },
         { id: '/runs' as RouteId, label: 'Execution Runs', icon: PlayCircle },
-        { id: '/approvals' as RouteId, label: 'Human Approvals', icon: CheckSquare, badge: '2', badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-500/30' }
+        { 
+          id: '/approvals' as RouteId, 
+          label: 'Human Approvals', 
+          icon: CheckSquare, 
+          badge: pendingApprovalsCount > 0 ? String(pendingApprovalsCount) : undefined, 
+          badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-500/30' 
+        }
       ]
     },
     {
