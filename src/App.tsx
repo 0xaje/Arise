@@ -173,6 +173,8 @@ export function App() {
           isBackendConnected={isBackendConnected}
           liveEvents={liveEvents}
           exceptions={exceptions}
+          approvals={approvals}
+          onApprovalAction={handleApprovalAction}
         />
       )}
 

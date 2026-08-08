@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { RouteId, LiveActivityEvent, ExceptionCase } from '../types/arise';
+import type { RouteId, LiveActivityEvent, ExceptionCase, ApprovalRequest } from '../types/arise';
 import { CoastyViewport } from '../components/coasty/CoastyViewport';
 import { DemoLauncherModal } from '../components/modals/DemoLauncherModal';
 import { 
@@ -19,7 +19,8 @@ import {
   Bot,
   Layers,
   FileText,
-  Play
+  Play,
+  XCircle
 } from 'lucide-react';
 
 interface CommandCenterProps {
@@ -30,6 +31,8 @@ interface CommandCenterProps {
   liveEvents: LiveActivityEvent[];
   exceptions: ExceptionCase[];
   isBackendConnected: boolean;
+  approvals?: ApprovalRequest[];
+  onApprovalAction?: (id: string, action: 'Approved' | 'Rejected') => void;
 }
 
 export const CommandCenter: React.FC<CommandCenterProps> = ({
@@ -37,13 +40,17 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
   onOpenCreateWorkflow,
   onOpenRunWorkflow,
   liveEvents,
-  exceptions
+  exceptions,
+  approvals = [],
+  onApprovalAction
 }) => {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
   // Real dynamic calculations from API state
   const pendingExceptions = exceptions.filter(e => e.status !== 'Resolved');
   const resolvedExceptions = exceptions.filter(e => e.status === 'Resolved');
   const escalatedExceptions = exceptions.filter(e => e.status === 'Escalated');
+
+  const pendingApprovals = (approvals || []).filter(a => a.status === 'Pending' || a.status === 'PENDING');
 
   const settledRevenueTotal = resolvedExceptions.reduce((acc, curr) => acc + curr.amount, 0);
   const accuracyPercentage = exceptions.length > 0
@@ -173,6 +180,77 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Active Human Governance Approval Card */}
+      {pendingApprovals.length > 0 && (
+        <div className="rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-amber-950/50 via-[#18120a] to-[#120e06] p-6 shadow-2xl space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/20 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded border border-amber-500/30">
+                    HUMAN GOVERNANCE PAUSE ENFORCED
+                  </span>
+                  <span className="text-xs text-amber-400 font-mono font-bold">Policy Gate &gt; $10,000 USD</span>
+                </div>
+                <h3 className="text-lg font-extrabold text-white mt-1">
+                  Human Approval Required — Globex Corporation Wire Settlement
+                </h3>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-xs text-amber-400 font-mono">Escalated Wire Amount</div>
+              <div className="text-2xl font-extrabold text-white font-mono">$14,850.00 USD</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono text-zinc-300">
+            <div className="rounded-xl bg-black/40 p-3 border border-amber-500/20">
+              <span className="text-zinc-500 block text-[10px]">CASE NUMBER</span>
+              <span className="text-amber-300 font-bold">EXC-HIGH-9901 (Globex Corp)</span>
+            </div>
+            <div className="rounded-xl bg-black/40 p-3 border border-amber-500/20">
+              <span className="text-zinc-500 block text-[10px]">COASTY RISK SCORE</span>
+              <span className="text-emerald-400 font-bold">0.85 (High Confidence Match)</span>
+            </div>
+            <div className="rounded-xl bg-black/40 p-3 border border-amber-500/20">
+              <span className="text-zinc-500 block text-[10px]">REASON FOR PAUSE</span>
+              <span className="text-zinc-200">Exceeds $10,000 auto-resolution limit</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-amber-500/20">
+            <span className="text-xs text-zinc-400 font-mono">
+              Coasty AI engine halted at Step 55. Waiting for CFO authorization sign-off.
+            </span>
+
+            <div className="flex items-center gap-3">
+              {onApprovalAction && (
+                <>
+                  <button
+                    onClick={() => onApprovalAction(pendingApprovals[0].id, 'Rejected')}
+                    className="flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-all"
+                  >
+                    <XCircle className="size-4" />
+                    <span>Reject</span>
+                  </button>
+                  <button
+                    onClick={() => onApprovalAction(pendingApprovals[0].id, 'Approved')}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all hover:scale-105"
+                  >
+                    <CheckCircle2 className="size-4 fill-white text-emerald-600" />
+                    <span>Approve $14,850.00 Settlement</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live Coasty Computer-Use Desktop Viewport */}
       <CoastyViewport onLaunchDemo={() => setIsDemoModalOpen(true)} />

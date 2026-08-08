@@ -91,9 +91,9 @@ export function buildApp() {
   }).catch(() => {});
 
   // Seed default exception case if database is empty
-  prisma.exceptionCase.count().then(count => {
+  prisma.exceptionCase.count().then(async (count) => {
     if (count === 0) {
-      prisma.exceptionCase.create({
+      await prisma.exceptionCase.create({
         data: {
           caseNumber: 'EXC-HIGH-9901',
           customerName: 'Globex Corporation',
@@ -101,7 +101,7 @@ export function buildApp() {
           exceptionType: 'UNAPPLIED_CASH',
           amount: 14850.00,
           currency: 'USD',
-          status: 'PENDING',
+          status: 'AWAITING_APPROVAL',
           riskScore: RiskScore.HIGH,
           sourceSystem: 'Bank Remittance Feed',
           description: 'Unapplied wire payment PAY-WIRE-99210 requiring remittance matching to invoice INV-2026-8812.',
@@ -109,6 +109,43 @@ export function buildApp() {
           confidence: 0.98,
         }
       }).catch(() => {});
+    }
+  }).catch(() => {});
+
+  // Seed default approval request if database is empty
+  prisma.approvalRequest.count().then(async (count) => {
+    if (count === 0) {
+      const exc = await prisma.exceptionCase.findFirst({ where: { caseNumber: 'EXC-HIGH-9901' } });
+      const wf = await prisma.workflow.findFirst();
+      if (exc && wf) {
+        let run = await prisma.agentRun.findFirst({ where: { runId: 'RUN-MSHD9JN5900EA8C2B23B' } });
+        if (!run) {
+          run = await prisma.agentRun.create({
+            data: {
+              runId: 'RUN-MSHD9JN5900EA8C2B23B',
+              workflowId: wf.id,
+              exceptionCaseId: exc.id,
+              status: 'APPROVAL_REQUIRED',
+              businessOutcome: 'UNAVAILABLE',
+              verificationStatus: 'UNAVAILABLE',
+              totalSteps: 75,
+              currentStep: 55,
+            }
+          });
+        }
+        await prisma.approvalRequest.create({
+          data: {
+            runId: run.id,
+            exceptionCaseId: exc.id,
+            approvalId: 'APP-9901-GOVERNANCE',
+            reason: 'Transaction amount $14,850.00 USD exceeds automated policy authority threshold ($10,000.00 USD). Require CFO approval.',
+            proposedAction: 'Execute $14,850.00 USD wire settlement against Globex Corporation invoice INV-2026-8812.',
+            requiredRole: 'CFO / Enterprise Finance Controller',
+            status: 'PENDING',
+            riskScore: 0.85,
+          }
+        }).catch(() => {});
+      }
     }
   }).catch(() => {});
 
