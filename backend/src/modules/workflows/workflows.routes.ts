@@ -6,12 +6,17 @@ import { AuditService } from '../../services/auditService.js';
 import { orchestrator } from '../../services/execution/execution.orchestrator.js';
 import { WorkflowStatus } from '@prisma/client';
 
+const statusEnumSchema = z.preprocess(
+  (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+  z.nativeEnum(WorkflowStatus)
+);
+
 const createWorkflowSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   category: z.string().min(1),
   triggerEvent: z.string().min(1),
-  status: z.nativeEnum(WorkflowStatus).default(WorkflowStatus.ACTIVE),
+  status: statusEnumSchema.default(WorkflowStatus.ACTIVE),
   autoApprovalThreshold: z.number().nonnegative(),
   maxSteps: z.number().int().positive().default(20),
   timeoutSeconds: z.number().int().positive().default(300),
@@ -53,7 +58,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
   // PATCH /api/v1/workflows/:id/status
   fastify.patch('/workflows/:id/status', async (request) => {
     const { id } = request.params as { id: string };
-    const { status } = z.object({ status: z.nativeEnum(WorkflowStatus) }).parse(request.body);
+    const { status } = z.object({ status: statusEnumSchema }).parse(request.body);
 
     const workflow = await prisma.workflow.findUnique({ where: { id } });
     if (!workflow) {

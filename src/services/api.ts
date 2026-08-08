@@ -75,10 +75,11 @@ export const ariseApi = {
     });
   },
 
-  updateWorkflowStatus: async (id: string, status: 'Active' | 'Paused' | 'Draft'): Promise<WorkflowItem> => {
+  updateWorkflowStatus: async (id: string, status: string): Promise<WorkflowItem> => {
+    const formattedStatus = status.toUpperCase();
     return request<WorkflowItem>(`/workflows/${id}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: formattedStatus }),
     });
   },
 
