@@ -13,7 +13,7 @@ It investigates payment records, remittance advice, customer accounts, and invoi
 
 ---
 
-## 🏆 Competition Result
+## Competition Result
 
 ```text
 68 real Coasty visual steps
@@ -29,7 +29,7 @@ SHA-256 evidence integrity validated
 
 ---
 
-## 🧱 System Architecture
+## System Architecture
 
 ```text
                    ┌──────────────────────┐
@@ -79,7 +79,7 @@ SHA-256 evidence integrity validated
 
 ---
 
-## 📋 The 18 Business Stages
+## The 18 Business Stages
 
 ARISE operates through an 18-stage deterministic resolution loop:
 
@@ -104,7 +104,7 @@ ARISE operates through an 18-stage deterministic resolution loop:
 
 ---
 
-## 🚀 Key Technical Innovations
+## Key Technical Innovations
 
 * **Verification Integrity Decoupling**: Systems never claim `VERIFIED` simply because Coasty finished. Outcome verification requires independent re-inspection proving `ObservedBusinessState == ExpectedBusinessState`.
 * **Same-Run Resume**: When human approval is granted, ARISE resumes the active Coasty run context (`COASTY-RUN-X`) without spawning duplicate runs.
@@ -114,7 +114,7 @@ ARISE operates through an 18-stage deterministic resolution loop:
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 * **Frontend**: React, TypeScript, Vite, Tailwind CSS, Lucide Icons.
 * **Backend**: Fastify Web Server, Prisma ORM, PostgreSQL (`arise_db`), Server-Sent Events (SSE).
@@ -122,7 +122,7 @@ ARISE operates through an 18-stage deterministic resolution loop:
 
 ---
 
-## ⚡ Quickstart & Setup
+## Quickstart & Setup
 
 ### 1. Prerequisites
 - Node.js (v18+ or v20+)
@@ -171,6 +171,6 @@ npm test
 
 ---
 
-## 🛡️ License
+## License
 
 MIT License. Built for Autonomous Finance Competitions.
