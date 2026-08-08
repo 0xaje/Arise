@@ -15,7 +15,7 @@ dotenv.config();
 
 async function runFinalCompetitionExecution() {
   console.log('====================================================');
-  console.log('    🏆 ARISE — FINAL COMPETITION WORKFLOW EXECUTION ');
+  console.log('    ARISE — FINAL COMPETITION WORKFLOW EXECUTION ');
   console.log('====================================================\n');
 
   // Step 1: Temporarily Enable Final Execution Arm
@@ -239,7 +239,7 @@ async function runFinalCompetitionExecution() {
   const compliance = await competitionService.generateComplianceReport(run.id);
 
   console.log('\n====================================================');
-  console.log('        🏆 FINAL COMPETITION EXECUTION REPORT       ');
+  console.log('        FINAL COMPETITION EXECUTION REPORT       ');
   console.log('====================================================');
   console.log(`ARISE Run ID:                  ${run.runId}`);
   console.log(`Coasty Run ID:                 ${run.externalRunId || 'coasty-run-competition-9901'}`);
@@ -264,7 +264,7 @@ async function runFinalCompetitionExecution() {
   process.env.FINAL_COMPETITION_EXECUTION_ENABLED = 'false';
   console.log('✓ FINAL_COMPETITION_EXECUTION_ENABLED reset to false for safety.');
 
-  console.log('🏆 FINAL COMPETITION EXECUTION COMPLETED & VERIFIED SUCCESSFULLY!');
+  console.log('FINAL COMPETITION EXECUTION COMPLETED & VERIFIED SUCCESSFULLY!');
   await prisma.$disconnect();
 }
 

@@ -1,11 +1,11 @@
-# 🎤 ARISE — Winning Presentation & Demo Script for Coasty
+# ARISE — Winning Presentation & Demo Script for Coasty
 
 > **Target Audience**: Coasty Engineers, Founders, and Competition Judges  
 > **Tagline**: *ARISE: The Autonomous Revenue Intelligence & Settlement Engine Driven by Coasty AI Computer Use.*
 
 ---
 
-## 🎯 THE 30-SECOND ELEVATOR PITCH
+## THE 30-SECOND ELEVATOR PITCH
 
 "Hi everyone! I’m presenting **ARISE** — the Autonomous Revenue Intelligence & Settlement Engine. 
 
@@ -17,7 +17,7 @@ Instead of brittle script selectors or legacy RPA, ARISE puts Coasty behind the 
 
 ---
 
-## 🎬 3-MINUTE LIVE DEMO SCRIPT & STEPS
+## 3-MINUTE LIVE DEMO SCRIPT & STEPS
 
 ### **Step 1: The Command Center & Coasty Machine Status (0:00 - 0:45)**
 - **What to Show**: Open the **ARISE Command Center** dashboard on your live Vercel link.
@@ -25,7 +25,7 @@ Instead of brittle script selectors or legacy RPA, ARISE puts Coasty behind the 
   > "Welcome to the ARISE Command Center. As you can see at the top, Coasty machine `ember-orbit` is connected live to Coasty's API at `https://coasty.ai/v1`. On the left, our active exception queue tracks real-time bank wire feeds."
 
 ### **Step 2: Launching the 68-Step Demo Runner (0:45 - 1:45)**
-- **What to Show**: Click the green **`[ 🚀 Launch 68-Step Demo ]`** button.
+- **What to Show**: Click the green **`[ Launch 68-Step Demo ]`** button.
 - **What to Say**: 
   > "Let's trigger our competition workflow. With one click, ARISE dispatches an idempotent task run to Coasty. Watch the Coasty Live Desktop Viewport stream in real time. Coasty visually opens the Enterprise Accounting Portal, inspects wire `PAY-WIRE-99210` from Globex Corporation, and cross-references invoice `INV-2026-8812` across 55+ visual steps."
 
@@ -35,13 +35,13 @@ Instead of brittle script selectors or legacy RPA, ARISE puts Coasty behind the 
   > "Notice what just happened! Because this transaction is **$14,850.00 USD** — exceeding our enterprise $10,000 safety threshold — ARISE triggers a human governance pause. Coasty halts execution, calculates an 85% risk score, and presents the CFO with SHA-256 evidence snapshots. I will now click **Approve** to authorize settlement."
 
 ### **Step 4: Cryptographic SOX Compliance Certificate (2:30 - 3:00)**
-- **What to Show**: Click **`[ 📄 Executive Certificate ]`** to open the printable SHA-256 compliance report.
+- **What to Show**: Click **`[ Executive Certificate ]`** to open the printable SHA-256 compliance report.
 - **What to Say**: 
   > "Once approved, ARISE generates an immutable Executive Finance Compliance Certificate. Every step, screenshot, and action taken by Coasty is sealed with SHA-256 cryptographic hashes for enterprise SOX auditors. This is how Coasty transforms from a computer-use engine into mission-critical enterprise infrastructure."
 
 ---
 
-## 💡 KEY HIGHLIGHTS TO EMPHASIZE FOR THE COASTY TEAM
+## KEY HIGHLIGHTS TO EMPHASIZE FOR THE COASTY TEAM
 
 1. **Leveraging All 4 Coasty API Surfaces**:
    - `/v1/predict`: Single-step interactive prompt console.
@@ -53,6 +53,6 @@ Instead of brittle script selectors or legacy RPA, ARISE puts Coasty behind the 
 
 ---
 
-## 🚀 CLOSING STATEMENT
+## CLOSING STATEMENT
 
 > "Coasty is the undisputed leader in AI computer use. ARISE shows what happens when Coasty is given real enterprise responsibilities — protecting revenue, enforcing safety thresholds, and delivering 100% audited financial settlements. Thank you!"
