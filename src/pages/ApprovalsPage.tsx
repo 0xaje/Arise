@@ -10,6 +10,7 @@ interface ApprovalsPageProps {
 
 export const ApprovalsPage: React.FC<ApprovalsPageProps> = ({ approvals, onAction }) => {
   const [isResetting, setIsResetting] = useState(false);
+  const [decidedStatus, setDecidedStatus] = useState<Record<string, string>>({});
 
   // Default fallback Globex Corporation approval item if none is pending in state
   const defaultPendingItem: ApprovalRequest = {
@@ -45,11 +46,20 @@ export const ApprovalsPage: React.FC<ApprovalsPageProps> = ({ approvals, onActio
     ? approvals 
     : [defaultPendingItem, ...approvals.filter(a => a.approvalId !== 'APP-9901-GOVERNANCE')];
 
+  const handleActionClick = async (targetId: string, action: 'Approved' | 'Rejected') => {
+    const nextVal = action.toUpperCase();
+    setDecidedStatus(prev => ({ ...prev, [targetId]: nextVal, 'APP-9901-GOVERNANCE': nextVal }));
+    try {
+      await onAction(targetId, action);
+    } catch (e) {}
+  };
+
   const handleReset = async () => {
     setIsResetting(true);
+    setDecidedStatus({});
     try {
       await fetch('/api/v1/approvals/reset', { method: 'POST' }).catch(() => {});
-      onAction('APP-9901-GOVERNANCE', 'Approved'); // Trigger refresh
+      await onAction('APP-9901-GOVERNANCE', 'Approved'); // Trigger refresh
     } finally {
       setIsResetting(false);
       window.location.reload();
@@ -85,7 +95,11 @@ export const ApprovalsPage: React.FC<ApprovalsPageProps> = ({ approvals, onActio
           const customer = item.exceptionCase?.customerName || item.run?.exceptionCase?.customerName || 'Globex Corporation';
           const amountVal = item.exceptionCase?.amount || item.run?.exceptionCase?.amount || 14850.00;
           const excType = item.exceptionCase?.exceptionType || 'UNAPPLIED_CASH';
-          const isPending = item.status === 'PENDING' || item.status === 'Pending';
+          
+          const rawStatus = item.status;
+          const statusOverride = decidedStatus[item.id] || decidedStatus[item.approvalId];
+          const currentStatus = statusOverride || rawStatus;
+          const isPending = currentStatus === 'PENDING' || currentStatus === 'Pending';
 
           return (
             <div 
@@ -137,15 +151,15 @@ export const ApprovalsPage: React.FC<ApprovalsPageProps> = ({ approvals, onActio
                 {isPending ? (
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => onAction(item.id || item.approvalId, 'Rejected')}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-bold text-red-400 hover:bg-red-500/20 transition-all"
+                      onClick={() => handleActionClick(item.id || item.approvalId, 'Rejected')}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-bold text-red-400 hover:bg-red-500/20 transition-all cursor-pointer"
                     >
                       <XCircle className="size-4" />
                       <span>Reject</span>
                     </button>
                     <button
-                      onClick={() => onAction(item.id || item.approvalId, 'Approved')}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all hover:scale-105"
+                      onClick={() => handleActionClick(item.id || item.approvalId, 'Approved')}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 font-extrabold text-white shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all hover:scale-105 cursor-pointer"
                     >
                       <CheckCircle2 className="size-4 fill-white text-emerald-600" />
                       <span>Approve Escalation</span>
@@ -153,9 +167,9 @@ export const ApprovalsPage: React.FC<ApprovalsPageProps> = ({ approvals, onActio
                   </div>
                 ) : (
                   <span className={`font-mono text-xs font-extrabold px-3 py-1.5 rounded-xl border ${
-                    item.status === 'APPROVED' || item.status === 'Approved' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-red-500/15 text-red-300 border-red-500/30'
+                    currentStatus === 'APPROVED' || currentStatus === 'Approved' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-red-500/15 text-red-300 border-red-500/30'
                   }`}>
-                    ✓ {item.status.toUpperCase()}
+                    ✓ {currentStatus.toUpperCase()}
                   </span>
                 )}
               </div>

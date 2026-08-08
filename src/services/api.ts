@@ -125,10 +125,11 @@ export const ariseApi = {
     return Array.isArray(res) ? res : [];
   },
 
-  submitApprovalDecision: async (id: string, decision: 'Approved' | 'Rejected', comment?: string): Promise<ApprovalRequest> => {
+  submitApprovalDecision: async (id: string, decision: 'Approved' | 'Rejected' | 'APPROVED' | 'REJECTED', comment?: string): Promise<ApprovalRequest> => {
+    const formattedDecision = (decision || 'APPROVED').toUpperCase();
     return request<ApprovalRequest>(`/approvals/${id}/decision`, {
       method: 'POST',
-      body: JSON.stringify({ decision, comment }),
+      body: JSON.stringify({ decision: formattedDecision, comment }),
     });
   },
 
