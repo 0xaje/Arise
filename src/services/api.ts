@@ -25,21 +25,34 @@ const getBaseUrl = (): string => {
 
 const API_BASE_URL = getBaseUrl();
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  });
+async function request<T>(endpoint: string, options?: RequestInit, retries = 2): Promise<T> {
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   }
 
-  return response.json();
+  throw lastError || new Error('Network request failed after retries');
 }
 
 export const ariseApi = {
