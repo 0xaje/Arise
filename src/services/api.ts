@@ -10,11 +10,17 @@ import type {
 } from '../types/arise';
 
 const getBaseUrl = (): string => {
-  const envUrl = (import.meta.env.VITE_ARISE_API_URL || '/api/v1').trim().replace(/\/+$/, '');
+  const envUrl = (
+    import.meta.env.VITE_ARISE_API_URL ||
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    '/api/v1'
+  ).trim().replace(/\/+$/, '');
+
   if (!envUrl) return '/api/v1';
   if (envUrl.endsWith('/api/v1')) return envUrl;
   if (envUrl.endsWith('/api')) return `${envUrl}/v1`;
-  return `${envUrl}/api/v1`;
+  return envUrl.startsWith('http') ? `${envUrl}/api/v1` : `${envUrl}/v1`;
 };
 
 const API_BASE_URL = getBaseUrl();

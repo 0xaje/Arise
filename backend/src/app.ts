@@ -23,11 +23,14 @@ export function buildApp() {
     requestIdHeader: 'x-request-id',
   });
 
-  // CORS
+  // CORS configuration to support Vercel, Render, and local development
   app.register(cors, {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (_origin, cb) => {
+      cb(null, true);
+    },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-request-id', 'x-coasty-signature'],
+    credentials: true,
   });
 
   // Seed default connections if database is empty

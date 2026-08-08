@@ -1,7 +1,19 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/v1/:path*",
+      "destination": "https://arise-backend.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://arise-backend.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/app",
+      "destination": "https://arise-backend.onrender.com/app"
+    },
+    {
+      "source": "/((?!api|app).*)",
       "destination": "/index.html"
     }
   ]
