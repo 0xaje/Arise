@@ -24,11 +24,20 @@ export const DemoLauncherModal: React.FC<DemoLauncherModalProps> = ({
     setLogs(['[ARISE] Initializing Competition Demo Run...', '[ARISE] Connecting to Coasty machine ember-orbit...']);
 
     try {
-      const wfs = await ariseApi.getWorkflows();
-      const compWf = wfs.find(w => w.category === 'Competition Workflow') || wfs[0];
+      let wfs = await ariseApi.getWorkflows();
+      let compWf = wfs.find(w => w.category === 'Competition Workflow' || w.name.includes('Cash Application')) || wfs[0];
 
       if (!compWf) {
-        throw new Error('No competition workflow found');
+        setLogs(prev => [...prev, '[ARISE] Initializing default competition workflow in database...']);
+        compWf = await ariseApi.createWorkflow({
+          name: 'Autonomous Cash Application Workflow',
+          description: 'Reconciles unapplied wire payments, remittance advice, and customer invoices with $10,000 human approval threshold.',
+          category: 'Competition Workflow',
+          triggerEvent: 'Unapplied Cash Exception',
+          status: 'ACTIVE',
+          autoApprovalThreshold: 10000.00,
+          maxSteps: 75,
+        });
       }
 
       setLogs(prev => [...prev, `[ARISE] Target Workflow: ${compWf.name}`]);

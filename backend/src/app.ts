@@ -1,6 +1,6 @@
 import fastify from 'fastify';
 import cors from '@fastify/cors';
-import { ConnectionType } from '@prisma/client';
+import { ConnectionType, RiskScore } from '@prisma/client';
 import { logger } from './lib/logger.js';
 import { errorHandler } from './lib/errors.js';
 import { prisma } from './lib/prisma.js';
@@ -64,6 +64,47 @@ export function buildApp() {
             lastVerifiedAt: new Date()
           }
         ]
+      }).catch(() => {});
+    }
+  }).catch(() => {});
+
+  // Seed default competition workflow if database is empty
+  prisma.workflow.count().then(count => {
+    if (count === 0) {
+      prisma.workflow.create({
+        data: {
+          name: 'Autonomous Cash Application Workflow',
+          description: 'Reconciles unapplied wire payments, remittance advice, and customer invoices with $10,000 human approval threshold.',
+          category: 'Competition Workflow',
+          triggerEvent: 'Unapplied Cash Exception',
+          status: 'ACTIVE',
+          autoApprovalThreshold: 10000.00,
+          maxSteps: 75,
+          timeoutSeconds: 600,
+          retryLimit: 3
+        }
+      }).catch(() => {});
+    }
+  }).catch(() => {});
+
+  // Seed default exception case if database is empty
+  prisma.exceptionCase.count().then(count => {
+    if (count === 0) {
+      prisma.exceptionCase.create({
+        data: {
+          caseNumber: 'EXC-HIGH-9901',
+          customerName: 'Globex Corporation',
+          accountNumber: 'ACC-9901',
+          exceptionType: 'UNAPPLIED_CASH',
+          amount: 14850.00,
+          currency: 'USD',
+          status: 'PENDING',
+          riskScore: RiskScore.HIGH,
+          sourceSystem: 'Bank Remittance Feed',
+          description: 'Unapplied wire payment PAY-WIRE-99210 requiring remittance matching to invoice INV-2026-8812.',
+          suggestedAction: 'Execute visual computer-use settlement with human approval sign-off.',
+          confidence: 0.98,
+        }
       }).catch(() => {});
     }
   }).catch(() => {});
