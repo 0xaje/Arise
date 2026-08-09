@@ -255,6 +255,79 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({
       {/* Live Coasty Computer-Use Desktop Viewport */}
       <CoastyViewport onLaunchDemo={() => setIsDemoModalOpen(true)} />
 
+      {/* Active Wire Exception Queue Panel */}
+      <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5 border border-indigo-500/30 bg-gradient-to-r from-[#0d0d16] via-[#11111a] to-[#0a0a12]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <AlertTriangle className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-white">Active Wire Exception Queue</h2>
+                <span className="flex size-2 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Real-time bank wire feed &amp; unapplied cash remittance queue.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 font-bold flex items-center gap-1.5">
+              <Bot className="size-3.5 text-indigo-400" />
+              Vision Agent
+            </span>
+            <span className="rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 font-bold">
+              UNAPPLIED CASH
+            </span>
+          </div>
+        </div>
+
+        {/* Highlighted Exception Queue Item */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5 space-y-4 hover:border-indigo-500/40 transition-all">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-indigo-400 font-bold">CASE: EXC-HIGH-9901</span>
+                <span className="text-zinc-500">•</span>
+                <span className="text-zinc-400">WIRE REF: <strong className="text-emerald-400 font-bold">PAY-WIRE-99210</strong></span>
+                <span className="text-zinc-500">•</span>
+                <span className="text-zinc-400">INVOICE: <strong className="text-indigo-300">INV-2026-8812</strong></span>
+              </div>
+              <h3 className="text-lg font-extrabold text-white mt-1.5">Globex Corporation</h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xl">
+                Unapplied wire payment <code className="text-emerald-400 font-mono">PAY-WIRE-99210</code> received from Globex Corporation. Requires Coasty Visual Computer-Use inspection &amp; ERP ledger allocation across 50+ steps.
+              </p>
+            </div>
+
+            <div className="text-right">
+              <span className="text-xs text-zinc-400 font-mono block">Unapplied Wire Amount</span>
+              <span className="text-2xl font-extrabold text-emerald-400 font-mono">$14,850.00 USD</span>
+              <span className="block text-[10px] text-amber-400 font-mono mt-0.5">Policy Limit: $10,000.00 USD</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-zinc-800/80 text-xs">
+            <div className="flex items-center gap-2 font-mono text-zinc-400">
+              <span className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-200 font-bold border border-zinc-700">
+                Badge: Vision Agent
+              </span>
+              <span>•</span>
+              <span className="text-emerald-400 font-semibold">50+ Visual Computer-Use Browser Steps</span>
+            </div>
+
+            <button
+              onClick={() => setIsDemoModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs px-4 py-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              <Play className="size-3.5 fill-white" />
+              <span>Launch 68-Step Coasty Execution</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <DemoLauncherModal
         isOpen={isDemoModalOpen}
         onClose={() => setIsDemoModalOpen(false)}
